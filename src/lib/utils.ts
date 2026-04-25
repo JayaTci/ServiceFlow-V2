@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Status, Priority, RequestType } from "@/lib/db/schema";
+export { DEPARTMENTS } from "@/lib/config/departments";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -19,11 +20,11 @@ export const STATUS_LABELS: Record<Status, string> = {
 };
 
 export const STATUS_COLORS: Record<Status, string> = {
-  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  in_progress: "bg-blue-100 text-blue-800 border-blue-200",
-  resolved: "bg-green-100 text-green-800 border-green-200",
-  closed: "bg-gray-100 text-gray-800 border-gray-200",
-  cancelled: "bg-red-100 text-red-800 border-red-200",
+  pending:     "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  in_progress: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  resolved:    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  closed:      "bg-muted text-muted-foreground border-border",
+  cancelled:   "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
@@ -34,10 +35,10 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 };
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  low: "bg-slate-100 text-slate-700 border-slate-200",
-  medium: "bg-amber-100 text-amber-700 border-amber-200",
-  high: "bg-orange-100 text-orange-700 border-orange-200",
-  urgent: "bg-red-100 text-red-700 border-red-200",
+  low:    "bg-muted text-muted-foreground border-border",
+  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  high:   "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  urgent: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
@@ -48,14 +49,6 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   general: "General",
 };
 
-export const DEPARTMENTS = [
-  "IT",
-  "HR",
-  "Finance",
-  "Operations",
-  "Marketing",
-  "Admin",
-];
 
 export function formatDate(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return "—";

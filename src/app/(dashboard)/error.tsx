@@ -11,7 +11,9 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    // Intentional: surfaces errors in Vercel logs and browser devtools.
+    // Replace with Sentry.captureException(error) or similar for production monitoring.
+    console.error("[DashboardError]", error.message, error.digest ?? "");
   }, [error]);
 
   return (

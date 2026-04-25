@@ -33,6 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: String(user.id),
           name: user.name,
           email: user.email,
+          // These fields are typed via src/types/next-auth.d.ts
           role: user.role,
           department: user.department,
         };
@@ -42,18 +43,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as { role: string }).role;
-        token.department = (user as { department: string | null }).department;
+        token.id = user.id ?? "";
+        token.role = user.role ?? "user";
+        token.department = user.department ?? null;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.department = token.department as string | null;
-      }
+      session.user.id = token.id;
+      session.user.role = token.role;
+      session.user.department = token.department;
       return session;
     },
   },

@@ -1,7 +1,8 @@
 "use client";
 
-import { Menu, LogOut, ChevronDown, Sun, Moon } from "lucide-react";
+import { Menu, LogOut, Sun, Moon, User } from "lucide-react";
 import { useTheme } from "next-themes";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { signOut } from "next-auth/react";
-import { Badge } from "@/components/ui/badge";
 
 interface HeaderProps {
   userName?: string;
@@ -23,71 +23,105 @@ interface HeaderProps {
   onMenuToggle: () => void;
 }
 
+/** Derives a human-readable page title from the current pathname. */
+function getPageTitle(pathname: string): string {
+  if (pathname === "/" || pathname === "/dashboard") return "Dashboard";
+  if (pathname.startsWith("/requests/new")) return "New Request";
+  if (pathname.match(/^\/requests\/\d+/)) return "Request Details";
+  if (pathname.startsWith("/requests")) return "Requests";
+  if (pathname.startsWith("/reports")) return "Reports";
+  if (pathname.startsWith("/admin/users")) return "User Management";
+  if (pathname.startsWith("/admin/activity")) return "Activity Log";
+  if (pathname.startsWith("/profile")) return "Profile";
+  return "ServiceFlow";
+}
+
 export function Header({ userName, userEmail, userRole, onMenuToggle }: HeaderProps) {
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const initials = userName
     ? userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
 
   return (
-    <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 lg:px-6">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onMenuToggle}
-        className="lg:hidden"
-      >
-        <Menu className="w-5 h-5" />
-      </Button>
+    <header className="h-14 bg-background border-b border-border flex items-center justify-between px-4 lg:px-6 shrink-0">
+      {/* Left — mobile menu + breadcrumb */}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMenuToggle}
+          className="lg:hidden w-8 h-8"
+          aria-label="Open navigation"
+        >
+          <Menu className="w-4.5 h-4.5" />
+        </Button>
+        <h1 className="text-sm font-semibold text-foreground">
+          {getPageTitle(pathname)}
+        </h1>
+      </div>
 
-      <div className="flex-1 lg:flex-none" />
-
-      <div className="flex items-center gap-2">
+      {/* Right — theme toggle + user menu */}
+      <div className="flex items-center gap-1.5">
         {/* Theme toggle */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="w-8 h-8"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          aria-label="Toggle theme"
         >
           <Sun className="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute w-4 h-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         </Button>
 
+        {/* User menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 px-2 h-9 rounded-lg hover:bg-muted transition-colors outline-none">
-            <Avatar className="w-7 h-7">
-              <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium leading-none">{userName}</p>
-            </div>
-            {userRole && (
-              <Badge
-                variant="secondary"
-                className={`hidden sm:inline-flex text-xs ${userRole === "admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" : ""}`}
-              >
-                {userRole}
-              </Badge>
-            )}
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+          <DropdownMenuTrigger>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 h-8 px-2 rounded-lg"
+              aria-label="User menu"
+            >
+              <Avatar className="w-6 h-6">
+                <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+                {userName}
+              </span>
+            </Button>
           </DropdownMenuTrigger>
+
           <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="font-normal">
+              <p className="font-semibold text-sm truncate">{userName}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+              {userRole && (
+                <p className="text-[10px] text-primary mt-0.5 capitalize font-medium">
+                  {userRole}
+                </p>
+              )}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                <p className="font-medium">{userName}</p>
-                <p className="text-xs text-muted-foreground font-normal">{userEmail}</p>
-              </DropdownMenuLabel>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2"
+                onClick={() => router.push("/profile")}
+              >
+                <User className="w-4 h-4 text-muted-foreground" />
+                Profile
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-red-600 cursor-pointer"
+              className="text-destructive cursor-pointer gap-2 focus:text-destructive"
             >
-              <LogOut className="w-4 h-4 mr-2" />
+              <LogOut className="w-4 h-4" />
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

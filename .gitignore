@@ -59,3 +59,9 @@ AGENTS.md
 # assets (not for public repo)
 assets/
 ../assets/
+
+# internal/codex files
+.codex/
+
+# project plan documents (internal)
+Plan/

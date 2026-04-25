@@ -9,9 +9,21 @@ import {
   Users,
   X,
   Layers,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavItem {
   href: string;
@@ -21,71 +33,206 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/requests", label: "Requests", icon: ClipboardList },
   { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin/users", label: "User Management", icon: Users, adminOnly: true },
+  { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
+  { href: "/admin/activity", label: "Activity", icon: Activity, adminOnly: true },
 ];
 
 interface SidebarProps {
   role?: string;
+  userName?: string;
+  userEmail?: string;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   onClose?: () => void;
 }
 
-export function Sidebar({ role, onClose }: SidebarProps) {
+export function Sidebar({
+  role,
+  userName,
+  userEmail,
+  collapsed = false,
+  onToggleCollapse,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
 
-  return (
-    <div className="flex flex-col h-full bg-background border-r border-border">
-      {/* Logo */}
-      <div className="flex items-center justify-between h-16 px-6 border-b border-border">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Layers className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-semibold text-lg">ServiceFlow</span>
-        </Link>
-        {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose} className="lg:hidden">
-            <X className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
+  const initials = userName
+    ? userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems
-          .filter((item) => !item.adminOnly || role === "admin")
-          .map((item) => {
+  const visibleItems = navItems.filter(
+    (item) => !item.adminOnly || role === "admin"
+  );
+
+  return (
+    <TooltipProvider>
+      <div
+        className={cn(
+          "flex flex-col h-full bg-sidebar border-r border-sidebar-border transition-all duration-300",
+          collapsed ? "w-[60px]" : "w-64"
+        )}
+      >
+        {/* Logo */}
+        <div
+          className={cn(
+            "flex items-center h-16 border-b border-sidebar-border shrink-0 transition-all",
+            collapsed ? "justify-center px-0" : "justify-between px-4"
+          )}
+        >
+          <Link
+            href="/dashboard"
+            className={cn(
+              "flex items-center gap-2.5 min-w-0",
+              collapsed && "justify-center"
+            )}
+          >
+            <div className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+              <Layers className="w-4 h-4 text-white" />
+            </div>
+            {!collapsed && (
+              <span className="font-bold text-base text-sidebar-foreground truncate">
+                ServiceFlow
+              </span>
+            )}
+          </Link>
+          {/* Mobile close */}
+          {onClose && !collapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="lg:hidden w-7 h-7 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto scrollbar-thin">
+          {visibleItems.map((item) => {
             const isActive =
-              item.href === "/"
-                ? pathname === "/"
+              item.href === "/dashboard"
+                ? pathname === "/dashboard"
                 : pathname.startsWith(item.href);
-            return (
+
+            const linkContent = (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150",
+                  collapsed ? "justify-center px-0 py-2.5 w-full" : "px-3 py-2.5",
                   isActive
-                    ? "bg-blue-600/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-primary/10 text-primary dark:bg-primary/15"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
-                <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive ? "text-blue-500 dark:text-blue-400" : "text-muted-foreground")} />
-                {item.label}
+                {/* Active indicator */}
+                {isActive && !collapsed && (
+                  <span className="absolute left-0 w-0.5 h-6 bg-primary rounded-r-full" />
+                )}
+                <item.icon
+                  className={cn(
+                    "w-[18px] h-[18px] shrink-0 transition-colors",
+                    isActive ? "text-primary" : "text-sidebar-foreground/50"
+                  )}
+                />
+                {!collapsed && (
+                  <span className="truncate">{item.label}</span>
+                )}
               </Link>
             );
-          })}
-      </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t border-border">
-        <p className="text-xs text-muted-foreground px-3">
-          {role === "admin" ? "Administrator" : "Staff"}
-        </p>
+            return collapsed ? (
+              <Tooltip key={item.href}>
+                <TooltipTrigger>
+                  <div className="relative">{linkContent}</div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div key={item.href} className="relative">
+                {linkContent}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* User + collapse toggle */}
+        <div className="border-t border-sidebar-border px-2 py-3 space-y-2">
+          {/* Collapse toggle — desktop only */}
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className={cn(
+                "hidden lg:flex items-center w-full rounded-lg px-2.5 py-2 text-xs font-medium",
+                "text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+                collapsed && "justify-center"
+              )}
+            >
+              {collapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <>
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  <span>Collapse</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* User info */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="flex justify-center">
+                  <Avatar className="w-8 h-8 cursor-default">
+                    <AvatarFallback className="text-xs bg-primary/15 text-primary font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                <p className="font-medium">{userName}</p>
+                <p className="text-muted-foreground">{role}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
+              <Avatar className="w-8 h-8 shrink-0">
+                <AvatarFallback className="text-xs bg-primary/15 text-primary font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {userName ?? "User"}
+                </p>
+                <p className="text-xs text-sidebar-foreground/40 truncate">
+                  {userEmail ?? ""}
+                </p>
+              </div>
+              {role === "admin" && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-0 shrink-0"
+                >
+                  <Shield className="w-2.5 h-2.5 mr-0.5" />
+                  Admin
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

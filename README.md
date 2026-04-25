@@ -1,138 +1,184 @@
 # ServiceFlow
 
-A full-stack service request and reporting system for managing internal company requests — built as a full-stack assessment project.
+A full-stack internal service request management system built for teams that want clarity over chaos. Submit, assign, track, and resolve every internal request in one place, with a complete audit trail at every step.
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?logo=tailwindcss)
+**Live demo:** *(add Vercel URL after deploy)*
 
 ---
 
-## Overview
+## What it does
 
-ServiceFlow allows teams to submit, track, and manage service requests across departments. It features a full reporting dashboard, role-based access control, and a clean business-ready UI.
+ServiceFlow gives your team a single place to handle internal requests, whether that is IT support tickets, document processing, facility maintenance, or office supply orders. Admins get a dashboard with analytics, a full activity log, and the ability to assign requests to specific people. Regular users can submit requests, track their status, and comment directly on a ticket.
+
+There is no public sign-up. Accounts are created and managed by admins through the Users panel. This keeps the system clean and avoids the usual sprawl you get with open registration.
+
+---
 
 ## Features
 
-- **Role-based auth** — Admin and User roles via Auth.js v5
-- **CRUD requests** — Create, view, edit, soft-delete
-- **Auto-generated codes** — Format: `SR-YYYY-NNNN`
-- **Search & filters** — By status, type, department, priority, date
-- **Dashboard** — Summary cards + 4 real-time charts
-- **Reports** — Date range filters, grouped breakdowns (status/type/dept/priority)
-- **Admin panel** — User management, role promotion/demotion
-- **Dark/light mode** — Dark theme by default, toggle in header
+| Feature | Details |
+|---------|---------|
+| Request tracking | Submit, categorize, and track requests from open to resolved |
+| Real-time dashboard | KPI cards, status distribution, department breakdown, monthly trend |
+| Role-based access | Admin and User roles with separate views and permissions |
+| Activity log | Immutable per-request timeline covering every status change, edit, assignment, and comment |
+| Threaded comments | Add, edit, and delete comments on any request |
+| Assignee field | Admins can assign requests to specific users |
+| Email notifications | Automatic emails on new requests, status changes, assignments, and comments |
+| Password reset | Secure token-based reset flow with 1-hour expiry |
+| Admin user management | Create, update role, and delete users with no public signup |
+| Global activity feed | Admin-only view of the last 100 events across all requests |
+| Profile page | Users update their name, department, and password |
+| Dark and light themes | Both fully designed, switchable from the header |
 
-## Tech Stack
+---
+
+## Tech stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
-| UI | React 19 + Tailwind CSS v4 + shadcn/ui |
+| Framework | Next.js 16 (App Router, React 19) |
+| Language | TypeScript 5 strict mode |
+| Database | PostgreSQL via Supabase |
 | ORM | Drizzle ORM |
-| Database | PostgreSQL 16 |
-| Auth | Auth.js v5 (credentials + JWT) |
-| Validation | Zod v4 + React Hook Form |
+| Auth | Auth.js v5 (JWT, Credentials provider) |
+| Styling | Tailwind CSS v4, shadcn/ui |
+| Email | Resend |
+| Validation | Zod |
 | Charts | Recharts |
-| Tables | TanStack Table v8 |
-| Notifications | Sonner |
+| Forms | React Hook Form |
+| Deployment | Vercel |
 
-## Getting Started
+---
 
-### Prerequisites
+## Getting started
 
-- Node.js 20+
-- PostgreSQL 16+ running locally
-
-### 1. Clone and install
+### 1. Clone the repo
 
 ```bash
-git clone https://github.com/JayaTci/ServiceFlow.git
-cd ServiceFlow
+git clone https://github.com/JayaTci/ServiceFlow-V2.git
+cd ServiceFlow-V2/ServiceFlow_v2
+```
+
+### 2. Install dependencies
+
+```bash
 npm install
 ```
 
-### 2. Configure environment
+### 3. Set up environment variables
+
+Copy the example file and fill in your values:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Required variables:
 
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/serviceflow"
-AUTH_SECRET="your-secret"   # openssl rand -base64 32
-AUTH_URL="http://localhost:3000"
-```
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | Supabase pooler connection string |
+| `AUTH_SECRET` | 32-byte random secret — run `openssl rand -base64 32` |
+| `AUTH_URL` | Full URL of your app (e.g. `http://localhost:3000`) |
+| `RESEND_API_KEY` | From resend.com |
+| `EMAIL_FROM` | Sender address, e.g. `noreply@yourdomain.com` |
+| `NEXT_PUBLIC_APP_URL` | Same as AUTH_URL |
 
-### 3. Set up the database
+### 4. Run database migrations
 
 ```bash
-# Create the database in PostgreSQL first
-createdb serviceflow
+npx drizzle-kit migrate
+```
 
-# Run migrations
-npm run db:migrate
+### 5. Seed the database
 
-# Seed demo data
+```bash
 npm run db:seed
 ```
 
-### 4. Run
+This creates two demo accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@serviceflow.com | admin123 |
+| User | john@serviceflow.com | user123 |
+
+### 6. Start the dev server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000).
 
-## Demo Accounts
+---
 
-| Role  | Email                    | Password |
-|-------|--------------------------|----------|
-| Admin | admin@serviceflow.com    | admin123 |
-| User  | john@serviceflow.com     | user123  |
-| User  | maria@serviceflow.com    | user123  |
-
-## Project Structure
+## Project structure
 
 ```
 src/
 ├── app/
-│   ├── (auth)/          # Login, Register
-│   ├── (dashboard)/     # Dashboard, Requests, Reports, Admin
-│   └── api/auth/        # Auth.js handlers
+│   ├── (auth)/          # Login, forgot/reset password pages
+│   ├── (dashboard)/     # App shell — requires authentication
+│   │   ├── dashboard/   # Main dashboard with analytics
+│   │   ├── requests/    # Request list and detail pages
+│   │   ├── reports/     # Reporting and charts
+│   │   ├── admin/       # Admin-only: user management, activity log
+│   │   └── profile/     # User profile and password change
+│   └── (landing)/       # Public landing page at /
 ├── components/
-│   ├── ui/              # shadcn/ui components
-│   ├── layout/          # Sidebar, Header
-│   ├── dashboard/       # Summary cards, Charts
-│   ├── requests/        # Table, Form, Badges
-│   ├── reports/         # Date range filter
-│   └── admin/           # User management
+│   ├── activity/        # ActivityTimeline component
+│   ├── comments/        # CommentThread and CommentForm
+│   ├── dashboard/       # Summary cards and charts
+│   ├── layout/          # Sidebar, header
+│   ├── requests/        # Request forms and status badges
+│   └── ui/              # shadcn/ui primitives
 ├── lib/
-│   ├── db/              # Drizzle schema, client, seed
-│   ├── auth/            # Auth.js config, actions
-│   ├── actions/         # Server actions (requests, users)
-│   ├── queries/         # DB read queries
+│   ├── actions/         # Server actions (auth, requests, comments, activities)
+│   ├── auth/            # Auth.js config
+│   ├── config/          # Shared constants (departments)
+│   ├── db/              # Drizzle schema and db client
+│   ├── email/           # Resend client and HTML templates
+│   ├── queries/         # Database read functions
 │   └── validations/     # Zod schemas
 └── types/               # Shared TypeScript types
 ```
 
-## Available Scripts
+---
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start dev server |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run db:generate` | Generate Drizzle migrations |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:seed` | Seed demo data |
-| `npm run db:studio` | Open Drizzle Studio |
+## Deployment on Vercel
 
-## Screenshots
+1. Push the repo to GitHub.
+2. Import the project in Vercel and set the root directory to `ServiceFlow_v2`.
+3. Add all environment variables from `.env.example` in the Vercel project settings.
+4. Run migrations against your production database before the first deploy:
+   ```bash
+   DATABASE_URL=<prod-url> npx drizzle-kit migrate
+   ```
+5. Deploy. Vercel detects Next.js automatically.
 
-> Dashboard, request list, reports, and admin pages available after setup.
+For Supabase, use the pooler connection string with `?pgbouncer=true&connection_limit=1` for serverless compatibility.
+
+---
+
+## Demo accounts
+
+After seeding, log in at `/login` with:
+
+- **Admin:** admin@serviceflow.com / admin123
+- **User:** john@serviceflow.com / user123
+
+These are for local development only. Rotate or remove them before production.
+
+---
+
+## Contributing
+
+This project is a portfolio piece, but pull requests are welcome for bug fixes and small improvements. Open an issue first for anything larger.
+
+---
+
+## License
+
+MIT

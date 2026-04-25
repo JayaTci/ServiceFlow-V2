@@ -3,7 +3,9 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { User } from "@/lib/db/schema";
 
-export async function getAllUsers(): Promise<Omit<User, "passwordHash">[]> {
+type SafeUser = Pick<User, "id" | "name" | "email" | "role" | "department" | "createdAt" | "updatedAt">;
+
+export async function getAllUsers(): Promise<SafeUser[]> {
   return db
     .select({
       id: users.id,
@@ -18,7 +20,7 @@ export async function getAllUsers(): Promise<Omit<User, "passwordHash">[]> {
     .orderBy(users.createdAt);
 }
 
-export async function getUserById(id: number): Promise<Omit<User, "passwordHash"> | null> {
+export async function getUserById(id: number): Promise<SafeUser | null> {
   const [user] = await db
     .select({
       id: users.id,

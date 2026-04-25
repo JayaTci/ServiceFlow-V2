@@ -1,7 +1,11 @@
-import type { ServiceRequest, User } from "@/lib/db/schema";
+import type { ServiceRequest, User, RequestComment, RequestActivity } from "@/lib/db/schema";
 
+// ─── Request Types ───────────────────────────────────────────────────────────
+
+/** Service request with the user who submitted it and optional assignee. */
 export type ServiceRequestWithUser = ServiceRequest & {
   requestedBy: Pick<User, "id" | "name" | "email" | "department">;
+  assignee?: Pick<User, "id" | "name" | "email"> | null;
 };
 
 export type PaginatedResult<T> = {
@@ -11,6 +15,8 @@ export type PaginatedResult<T> = {
   pageSize: number;
   totalPages: number;
 };
+
+// ─── Dashboard Types ─────────────────────────────────────────────────────────
 
 export type DashboardStats = {
   total: number;
@@ -25,15 +31,14 @@ export type CountByField = {
   count: number;
 };
 
-// Extend next-auth session types
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      role: string;
-      department: string | null;
-    };
-  }
-}
+// ─── Activity / Comment Types ────────────────────────────────────────────────
+
+/** Activity log entry with the actor's name. */
+export type ActivityWithActor = RequestActivity & {
+  actor: Pick<User, "id" | "name" | "email">;
+};
+
+/** Comment with the author's details. */
+export type CommentWithAuthor = RequestComment & {
+  author: Pick<User, "id" | "name" | "email" | "role">;
+};

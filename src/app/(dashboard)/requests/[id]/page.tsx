@@ -1,14 +1,18 @@
 import { auth } from "@/lib/auth/config";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarDays, Building2, User, Tag, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge, PriorityBadge } from "@/components/requests/status-badge";
 import { RequestEditForm } from "@/components/requests/request-edit-form";
+import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { CommentForm } from "@/components/comments/CommentForm";
 import { getRequestById } from "@/lib/queries/requests";
+import { getActivitiesForRequest } from "@/lib/queries/activities";
+import { getCommentsForRequest } from "@/lib/queries/comments";
 import { REQUEST_TYPE_LABELS, formatDate } from "@/lib/utils";
 
 export default async function RequestDetailPage({
@@ -26,7 +30,12 @@ export default async function RequestDetailPage({
   const requestId = parseInt(id);
   if (isNaN(requestId)) notFound();
 
-  const request = await getRequestById(requestId);
+  const [request, activities, comments] = await Promise.all([
+    getRequestById(requestId),
+    getActivitiesForRequest(requestId),
+    getCommentsForRequest(requestId),
+  ]);
+
   if (!request) notFound();
 
   const isAdmin = session.user.role === "admin";
@@ -35,85 +44,151 @@ export default async function RequestDetailPage({
   const isEditMode = edit === "true" && canEdit;
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <div className="flex items-center gap-3">
-        <Link href="/requests" className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <Link
+          href="/requests"
+          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "shrink-0 mt-0.5")}
+        >
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm text-muted-foreground">{request.requestCode}</span>
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              {request.requestCode}
+            </span>
             <StatusBadge status={request.status} />
             <PriorityBadge priority={request.priority} />
           </div>
-          <h1 className="text-xl font-bold text-foreground truncate mt-0.5">{request.title}</h1>
+          <h1 className="text-xl font-bold text-foreground leading-snug">{request.title}</h1>
         </div>
         {canEdit && !isEditMode && (
-          <Link href={`/requests/${id}?edit=true`} className={cn(buttonVariants({ variant: "outline" }))}>
+          <Link
+            href={`/requests/${id}?edit=true`}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0 mt-0.5")}
+          >
             Edit
           </Link>
         )}
       </div>
 
-      {isEditMode ? (
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Edit Request</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RequestEditForm
-              requestId={requestId}
-              defaultValues={{
-                title: request.title,
-                description: request.description,
-                requestType: request.requestType,
-                department: request.department,
-                dateRequested: request.dateRequested,
-                priority: request.priority,
-                status: request.status,
-              }}
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5">
+        {/* Left — details or edit form */}
+        <div className="space-y-4">
+          {isEditMode ? (
+            <div className="rounded-xl border border-border bg-card p-6">
+              <h2 className="text-sm font-semibold text-foreground mb-4">Edit Request</h2>
+              <RequestEditForm
+                requestId={requestId}
+                defaultValues={{
+                  title: request.title,
+                  description: request.description,
+                  requestType: request.requestType,
+                  department: request.department,
+                  dateRequested: request.dateRequested,
+                  priority: request.priority,
+                  status: request.status,
+                }}
+              />
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+              {/* Description */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Description
+                </p>
+                <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  {request.description}
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Meta grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Tag className="w-3 h-3" />
+                    Type
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {REQUEST_TYPE_LABELS[request.requestType]}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Building2 className="w-3 h-3" />
+                    Department
+                  </div>
+                  <p className="text-sm font-medium text-foreground">{request.department}</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <User className="w-3 h-3" />
+                    Requested by
+                  </div>
+                  <p className="text-sm font-medium text-foreground">{request.requestedBy.name}</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarDays className="w-3 h-3" />
+                    Date requested
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {formatDate(request.dateRequested)}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    Created
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {formatDate(request.createdAt)}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    Updated
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {formatDate(request.updatedAt)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Comments */}
+          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-foreground">
+              Comments
+              {comments.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {comments.length}
+                </span>
+              )}
+            </h2>
+            <CommentThread
+              comments={comments}
+              currentUserId={session.user.id}
+              currentUserRole={session.user.role}
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
-              <p className="text-foreground whitespace-pre-wrap">{request.description}</p>
-            </div>
-
             <Separator />
+            <CommentForm requestId={requestId} />
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Type</p>
-                <p className="text-sm font-medium">{REQUEST_TYPE_LABELS[request.requestType]}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Department</p>
-                <p className="text-sm font-medium">{request.department}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Requested By</p>
-                <p className="text-sm font-medium">{request.requestedBy.name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Date Requested</p>
-                <p className="text-sm font-medium">{formatDate(request.dateRequested)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Created</p>
-                <p className="text-sm font-medium">{formatDate(request.createdAt)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Last Updated</p>
-                <p className="text-sm font-medium">{formatDate(request.updatedAt)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Right — activity timeline */}
+        <div className="rounded-xl border border-border bg-card p-6 space-y-4 h-fit">
+          <h2 className="text-sm font-semibold text-foreground">Activity</h2>
+          <ActivityTimeline activities={activities} />
+        </div>
+      </div>
     </div>
   );
 }

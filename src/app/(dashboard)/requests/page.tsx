@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { RequestTable } from "@/components/requests/request-table";
 import { getRequests } from "@/lib/queries/requests";
 import { requestFiltersSchema } from "@/lib/validations/request";
@@ -28,6 +27,8 @@ interface SearchParams {
   priority?: string;
   page?: string;
 }
+
+const ACTIVE_FILTER_KEYS = ["status", "requestType", "department", "priority"] as const;
 
 export default async function RequestsPage({
   searchParams,
@@ -46,83 +47,106 @@ export default async function RequestsPage({
   const totalPages = result.totalPages;
   const currentPage = filters.page;
 
+  const activeFilters = ACTIVE_FILTER_KEYS.filter(
+    (k) => params[k] && params[k] !== "all"
+  ).length + (params.search ? 1 : 0);
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Requests</h1>
+          <h2 className="text-lg font-semibold text-foreground">Requests</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {result.total} total request{result.total !== 1 ? "s" : ""}
+            {result.total} request{result.total !== 1 ? "s" : ""}
+            {activeFilters > 0 && (
+              <span className="ml-1 text-primary">· {activeFilters} filter{activeFilters !== 1 ? "s" : ""} active</span>
+            )}
           </p>
         </div>
-        <Link href="/requests/new" className={cn(buttonVariants())}>
-          <Plus className="w-4 h-4 mr-1.5" />
+        <Link href="/requests/new" className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}>
+          <Plus className="w-4 h-4" />
           New Request
         </Link>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <form className="flex flex-wrap gap-3">
-            <Input
-              name="search"
-              defaultValue={params.search}
-              placeholder="Search title, code, department..."
-              className="w-full sm:w-64"
-            />
+      {/* Filter bar */}
+      <form className="flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            name="search"
+            defaultValue={params.search}
+            placeholder="Search requests..."
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
 
-            <Select name="status" defaultValue={params.status ?? "all"}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {(Object.entries(STATUS_LABELS) as [Status, string][]).map(([v, l]) => (
-                  <SelectItem key={v} value={v}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Status chip */}
+        <Select name="status" defaultValue={params.status ?? "all"}>
+          <SelectTrigger className="h-8 text-xs w-[130px] gap-1">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {(Object.entries(STATUS_LABELS) as [Status, string][]).map(([v, l]) => (
+              <SelectItem key={v} value={v}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <Select name="requestType" defaultValue={params.requestType ?? "all"}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {(Object.entries(REQUEST_TYPE_LABELS) as [RequestType, string][]).map(([v, l]) => (
-                  <SelectItem key={v} value={v}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Priority chip */}
+        <Select name="priority" defaultValue={params.priority ?? "all"}>
+          <SelectTrigger className="h-8 text-xs w-[120px] gap-1">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All priorities</SelectItem>
+            {(Object.entries(PRIORITY_LABELS) as [Priority, string][]).map(([v, l]) => (
+              <SelectItem key={v} value={v}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <Select name="department" defaultValue={params.department ?? "all"}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All departments</SelectItem>
-                {DEPARTMENTS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        {/* Type chip */}
+        <Select name="requestType" defaultValue={params.requestType ?? "all"}>
+          <SelectTrigger className="h-8 text-xs w-[140px] gap-1">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {(Object.entries(REQUEST_TYPE_LABELS) as [RequestType, string][]).map(([v, l]) => (
+              <SelectItem key={v} value={v}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <Select name="priority" defaultValue={params.priority ?? "all"}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="All priorities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All priorities</SelectItem>
-                {(Object.entries(PRIORITY_LABELS) as [Priority, string][]).map(([v, l]) => (
-                  <SelectItem key={v} value={v}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Department chip */}
+        <Select name="department" defaultValue={params.department ?? "all"}>
+          <SelectTrigger className="h-8 text-xs w-[140px] gap-1">
+            <SelectValue placeholder="Department" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All departments</SelectItem>
+            {DEPARTMENTS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
-            <Button type="submit" variant="outline">Filter</Button>
-          </form>
-        </CardContent>
-      </Card>
+        <Button type="submit" size="sm" variant="secondary" className="h-8 gap-1.5 text-xs">
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Apply
+        </Button>
+
+        {activeFilters > 0 && (
+          <Link
+            href="/requests"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs text-muted-foreground")}
+          >
+            Clear
+          </Link>
+        )}
+      </form>
 
       {/* Table */}
       <RequestTable
@@ -133,15 +157,13 @@ export default async function RequestsPage({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <p>
-            Page {currentPage} of {totalPages}
-          </p>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <p>Page {currentPage} of {totalPages} · {result.total} results</p>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
                 href={`/requests?${new URLSearchParams({ ...params, page: String(currentPage - 1) })}`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7 text-xs")}
               >
                 Previous
               </Link>
@@ -149,7 +171,7 @@ export default async function RequestsPage({
             {currentPage < totalPages && (
               <Link
                 href={`/requests?${new URLSearchParams({ ...params, page: String(currentPage + 1) })}`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7 text-xs")}
               >
                 Next
               </Link>

@@ -9,7 +9,7 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
-import { Eye, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { Eye, Pencil, Trash2, MoreHorizontal, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -153,13 +153,16 @@ export function RequestTable({ data, currentUserId, isAdmin }: RequestTableProps
 
   return (
     <>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-xl border border-border overflow-hidden bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-muted/50">
+              <TableRow key={headerGroup.id} className="bg-muted/40 hover:bg-muted/40 border-b border-border">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  <TableHead
+                    key={header.id}
+                    className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 px-4"
+                  >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -169,15 +172,26 @@ export function RequestTable({ data, currentUserId, isAdmin }: RequestTableProps
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-12 text-muted-foreground">
-                  No requests found
+                <TableCell colSpan={columns.length} className="py-20 text-center">
+                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                      <ClipboardList className="w-6 h-6 text-muted-foreground/50" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">No requests found</p>
+                      <p className="text-xs mt-0.5 text-muted-foreground/70">Try adjusting your filters</p>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-muted/50">
+                <TableRow
+                  key={row.id}
+                  className="hover:bg-muted/30 transition-colors border-b border-border/60 last:border-0"
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3">
+                    <TableCell key={cell.id} className="py-3 px-4 text-sm">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

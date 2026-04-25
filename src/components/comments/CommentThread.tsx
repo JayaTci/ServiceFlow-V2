@@ -1,0 +1,174 @@
+"use client";
+
+import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { Pencil, Trash2, Check, X } from "lucide-react";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { deleteComment, updateComment } from "@/lib/actions/comments";
+import { cn } from "@/lib/utils";
+import type { CommentWithAuthor } from "@/types";
+
+interface CommentItemProps {
+  comment: CommentWithAuthor;
+  currentUserId: string;
+  currentUserRole: string;
+}
+
+function CommentItem({ comment, currentUserId, currentUserRole }: CommentItemProps) {
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [saving, setSaving] = useState(false);
+
+  const initials = comment.author.name
+    .split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+
+  const canEdit = String(comment.authorId) === currentUserId;
+  const canDelete =
+    String(comment.authorId) === currentUserId || currentUserRole === "admin";
+
+  const handleSave = async () => {
+    if (!editContent.trim()) return;
+    setSaving(true);
+    const result = await updateComment(comment.id, editContent.trim());
+    setSaving(false);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    setEditing(false);
+    toast.success("Comment updated.");
+  };
+
+  const handleDelete = async () => {
+    const result = await deleteComment(comment.id);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Comment deleted.");
+  };
+
+  return (
+    <div className="flex gap-3 group">
+      <Avatar className="w-7 h-7 shrink-0 mt-0.5">
+        <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="flex-1 min-w-0">
+        {/* Header */}
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="text-sm font-semibold text-foreground">
+            {comment.author.name}
+          </span>
+          {comment.author.role === "admin" && (
+            <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+              Admin
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">
+            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+          </span>
+        </div>
+
+        {/* Body */}
+        {editing ? (
+          <div className="space-y-2">
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="min-h-[72px] text-sm resize-none"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs gap-1"
+                onClick={handleSave}
+                disabled={saving || !editContent.trim()}
+              >
+                <Check className="w-3 h-3" />
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-3 text-xs gap-1"
+                onClick={() => { setEditing(false); setEditContent(comment.content); }}
+              >
+                <X className="w-3 h-3" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
+              {comment.content}
+            </p>
+            {/* Actions — show on hover */}
+            {(canEdit || canDelete) && (
+              <div className={cn(
+                "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              )}>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 text-muted-foreground hover:text-foreground"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 text-muted-foreground hover:text-destructive"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface CommentThreadProps {
+  comments: CommentWithAuthor[];
+  currentUserId: string;
+  currentUserRole: string;
+}
+
+export function CommentThread({ comments, currentUserId, currentUserRole }: CommentThreadProps) {
+  if (comments.length === 0) {
+    return (
+      <div className="py-6 text-center">
+        <p className="text-sm text-muted-foreground">No comments yet. Be the first to comment.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {comments.map((comment) => (
+        <CommentItem
+          key={comment.id}
+          comment={comment}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+        />
+      ))}
+    </div>
+  );
+}
