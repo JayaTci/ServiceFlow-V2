@@ -48,7 +48,7 @@ export default async function AdminUsersPage() {
           <div className="divide-y divide-border/60">
             {users.map((user) => {
               const initials = user.name
-                .split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+                .split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
               const isAdmin = user.role === "admin";
 
               return (
@@ -70,12 +70,12 @@ export default async function AdminUsersPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+                      <div className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
                         {user.name}
                         {isAdmin && (
                           <Shield className="w-3 h-3 text-primary shrink-0" />
                         )}
-                      </p>
+                      </div>
                       <p className="text-xs text-muted-foreground truncate">
                         {user.email}
                         {user.department && (
