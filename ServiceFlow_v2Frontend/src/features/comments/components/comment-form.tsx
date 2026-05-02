@@ -42,9 +42,10 @@ export function CommentForm({ requestId }: CommentFormProps) {
         onChange={(e) => setContent(e.target.value)}
         className="min-h-[80px] text-sm resize-none"
         onKeyDown={(e) => {
-          // Cmd/Ctrl+Enter submits
+          // Cmd/Ctrl+Enter submits — guard against double-submit while a request is in flight
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
             e.preventDefault();
+            if (loading) return;
             handleSubmit(e as unknown as React.FormEvent);
           }
         }}

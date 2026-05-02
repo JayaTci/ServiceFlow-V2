@@ -50,7 +50,7 @@ interface RequestTableProps {
 const columnHelper = createColumnHelper<ServiceRequestWithUser>();
 
 // Renders the request list table with row-level view/edit/delete actions.
-export function RequestTable({ data, currentUserId, isAdmin }: RequestTableProps) {
+export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: RequestTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -151,6 +151,7 @@ export function RequestTable({ data, currentUserId, isAdmin }: RequestTableProps
       toast.error(result.error);
     } else {
       toast.success("Request deleted");
+      onDeleted?.();
       router.refresh();
     }
   };

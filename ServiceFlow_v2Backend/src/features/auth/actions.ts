@@ -197,7 +197,7 @@ const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(80),
   department: z.string().nullable().optional(),
   currentPassword: z.string().optional(),
-  newPassword: z.string().min(6).max(100).optional(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters").max(100).optional(),
 });
 
 /** Updates the authenticated user's name, department, and optionally password. */

@@ -15,6 +15,7 @@ import { requestCreatedTemplate } from "@backend/email/templates/request-created
 import { statusChangedTemplate } from "@backend/email/templates/status-changed";
 import { requestAssignedTemplate } from "@backend/email/templates/request-assigned";
 import { logger } from "@backend/utils/logger";
+import { parseUserId } from "@backend/utils/parse-user-id";
 import { actionError, actionSuccess, type ActionResult } from "@shared/action-result";
 import type { CreateRequestInput, UpdateRequestInput } from "@shared/validation/request";
 
@@ -26,10 +27,12 @@ export async function createRequest(data: CreateRequestInput): Promise<ActionRes
   const parsed = createRequestSchema.safeParse(data);
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
+  const actorId = parseUserId(session.user.id);
+  if (actorId === null) return actionError("Unauthorized");
+
   const year = new Date().getFullYear();
   const count = await getRequestCountForYear(year);
   const requestCode = generateRequestCode(year, count + 1);
-  const actorId = parseInt(session.user.id);
 
   let newRequestId: number;
 
@@ -61,7 +64,7 @@ export async function createRequest(data: CreateRequestInput): Promise<ActionRes
     requestTitle: parsed.data.title,
     requestId: newRequestId,
   });
-  sendEmail({ to: session.user.email ?? "", subject, html });
+  await sendEmail({ to: session.user.email ?? "", subject, html });
 
   revalidatePath("/requests");
   revalidatePath("/dashboard");
@@ -102,7 +105,9 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
     return actionError("Forbidden");
   }
 
-  const actorId = parseInt(session.user.id);
+  const actorId = parseUserId(session.user.id);
+  if (actorId === null) return actionError("Unauthorized");
+
   const statusChanged = parsed.data.status !== existing.status;
   const resolvedAt =
     parsed.data.status === "resolved" && existing.status !== "resolved"
@@ -146,7 +151,7 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
       oldStatus: existing.status,
       newStatus: parsed.data.status,
     });
-    sendEmail({ to: existing.requestedByEmail, subject, html });
+    await sendEmail({ to: existing.requestedByEmail, subject, html });
   } else {
     await logActivity({ requestId: id, actorId, action: "updated" });
   }
@@ -190,7 +195,8 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
     return actionError("Failed to assign request. Please try again.");
   }
 
-  const actorId = parseInt(session.user.id);
+  const actorId = parseUserId(session.user.id);
+  if (actorId === null) return actionError("Unauthorized");
 
   if (assigneeId !== null) {
     await logActivity({
@@ -215,7 +221,7 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
         requestId: id,
         requesterName: existing.requestedByName,
       });
-      sendEmail({ to: assignee.email, subject, html });
+      await sendEmail({ to: assignee.email, subject, html });
     }
   } else {
     await logActivity({ requestId: id, actorId, action: "unassigned" });
@@ -263,9 +269,12 @@ export async function softDeleteRequest(id: number): Promise<ActionResult> {
     return actionError("Failed to delete request. Please try again.");
   }
 
+  const deleteActorId = parseUserId(session.user.id);
+  if (deleteActorId === null) return actionError("Unauthorized");
+
   await logActivity({
     requestId: id,
-    actorId: parseInt(session.user.id),
+    actorId: deleteActorId,
     action: "deleted",
   });
 

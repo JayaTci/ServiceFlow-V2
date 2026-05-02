@@ -13,7 +13,8 @@ import { actionError, actionSuccess, type ActionResult } from "@shared/action-re
 /** Updates a user's role from the admin users panel. */
 export async function updateUserRole(userId: number, role: Role): Promise<ActionResult> {
   const session = await auth();
-  if (session?.user?.role !== "admin") return actionError("Forbidden");
+  if (!session?.user) return actionError("Unauthorized");
+  if (session.user.role !== "admin") return actionError("Forbidden");
 
   try {
     await db
@@ -32,7 +33,8 @@ export async function updateUserRole(userId: number, role: Role): Promise<Action
 /** Deletes a user from the admin users panel, except the current user. */
 export async function deleteUser(userId: number): Promise<ActionResult> {
   const session = await auth();
-  if (session?.user?.role !== "admin") return actionError("Forbidden");
+  if (!session?.user) return actionError("Unauthorized");
+  if (session.user.role !== "admin") return actionError("Forbidden");
   if (String(userId) === session.user.id) return actionError("Cannot delete yourself");
 
   try {
@@ -55,7 +57,8 @@ export async function adminCreateUser(data: {
   department?: string;
 }): Promise<ActionResult> {
   const session = await auth();
-  if (session?.user?.role !== "admin") return actionError("Forbidden");
+  if (!session?.user) return actionError("Unauthorized");
+  if (session.user.role !== "admin") return actionError("Forbidden");
 
   const passwordHash = await bcrypt.hash(data.password, 10);
 

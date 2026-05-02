@@ -11,7 +11,10 @@ export const createRequestSchema = z.object({
     "general",
   ]),
   department: z.string().min(1, "Department is required"),
-  dateRequested: z.string().min(1, "Date is required"),
+  dateRequested: z
+    .string()
+    .min(1, "Date is required")
+    .refine((v) => !isNaN(Date.parse(v)), { message: "Invalid date format" }),
   priority: z.enum(["low", "medium", "high", "urgent"]),
 });
 

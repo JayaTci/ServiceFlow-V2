@@ -7,6 +7,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { auth } from "@backend/auth/config";
 import { logActivity } from "@backend/features/activities/actions";
 import { logger } from "@backend/utils/logger";
+import { parseUserId } from "@backend/utils/parse-user-id";
 import { z } from "zod";
 import { actionError, actionSuccess, type ActionResult } from "@shared/action-result";
 
@@ -34,10 +35,13 @@ export async function createComment(requestId: number, content: string): Promise
 
   if (!request) return actionError("Request not found");
 
+  const actorId = parseUserId(session.user.id);
+  if (actorId === null) return actionError("Unauthorized");
+
   try {
     await db.insert(requestComments).values({
       requestId,
-      authorId: parseInt(session.user.id),
+      authorId: actorId,
       content: parsed.data.content,
     });
   } catch (err) {
@@ -52,7 +56,7 @@ export async function createComment(requestId: number, content: string): Promise
   // Log activity — non-fatal if it fails
   await logActivity({
     requestId,
-    actorId: parseInt(session.user.id),
+    actorId,
     action: "commented",
   });
 

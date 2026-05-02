@@ -15,6 +15,7 @@ import {
 } from "@frontend/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@frontend/components/ui/avatar";
 import { signOut } from "next-auth/react";
+import { toast } from "sonner";
 
 interface HeaderProps {
   userName?: string;
@@ -118,7 +119,13 @@ export function Header({ userName, userEmail, userRole, onMenuToggle }: HeaderPr
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={async () => {
+                try {
+                  await signOut({ callbackUrl: "/login" });
+                } catch {
+                  toast.error("Sign out failed. Please try again.");
+                }
+              }}
               className="text-destructive cursor-pointer gap-2 focus:text-destructive"
             >
               <LogOut className="w-4 h-4" />

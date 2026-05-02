@@ -43,7 +43,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id ?? "";
+        if (!user.id) {
+          throw new Error("User ID missing from auth token — credentials flow is broken");
+        }
+        token.id = user.id;
         token.role = user.role ?? "user";
         token.department = user.department ?? null;
       }
