@@ -1,23 +1,24 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@backend/auth/config";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SimpleBarChart } from "@/components/dashboard/bar-chart";
-import { StatusChart } from "@/components/dashboard/status-chart";
-import { DateRangeFilter } from "@/components/reports/date-range-filter";
+import { Card, CardContent, CardHeader, CardTitle } from "@frontend/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@frontend/components/ui/tabs";
+import { SimpleBarChart } from "@frontend/features/dashboard/components/bar-chart";
+import { StatusChart } from "@frontend/features/dashboard/components/status-chart";
+import { DateRangeFilter } from "@frontend/features/reports/components/date-range-filter";
 import {
   getDashboardStats,
   getCountByStatus,
   getCountByType,
   getCountByDepartment,
   getCountByPriority,
-} from "@/lib/queries/reports";
+} from "@backend/features/reports/queries";
 
 interface SearchParams {
   dateFrom?: string;
   dateTo?: string;
 }
 
+// Renders aggregate request reporting for the selected date range.
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -162,6 +163,7 @@ export default async function ReportsPage({
   );
 }
 
+// Renders report aggregate rows in a compact table.
 function ReportTable({ data }: { data: { label: string; count: number }[] }) {
   const total = data.reduce((sum, r) => sum + r.count, 0);
   return (

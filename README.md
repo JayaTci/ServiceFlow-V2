@@ -63,7 +63,7 @@ cd ServiceFlow-V2/ServiceFlow_v2
 ### 2. Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 3. Set up environment variables
@@ -88,13 +88,13 @@ Required variables:
 ### 4. Run database migrations
 
 ```bash
-npx drizzle-kit migrate
+pnpm db:migrate
 ```
 
 ### 5. Seed the database
 
 ```bash
-npm run db:seed
+pnpm db:seed
 ```
 
 This creates two demo accounts:
@@ -107,7 +107,7 @@ This creates two demo accounts:
 ### 6. Start the dev server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -117,32 +117,45 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Project structure
 
 ```
-src/
-├── app/
-│   ├── (auth)/          # Login, forgot/reset password pages
-│   ├── (dashboard)/     # App shell — requires authentication
-│   │   ├── dashboard/   # Main dashboard with analytics
-│   │   ├── requests/    # Request list and detail pages
-│   │   ├── reports/     # Reporting and charts
-│   │   ├── admin/       # Admin-only: user management, activity log
-│   │   └── profile/     # User profile and password change
-│   └── (landing)/       # Public landing page at /
-├── components/
-│   ├── activity/        # ActivityTimeline component
-│   ├── comments/        # CommentThread and CommentForm
-│   ├── dashboard/       # Summary cards and charts
-│   ├── layout/          # Sidebar, header
-│   ├── requests/        # Request forms and status badges
-│   └── ui/              # shadcn/ui primitives
-├── lib/
-│   ├── actions/         # Server actions (auth, requests, comments, activities)
-│   ├── auth/            # Auth.js config
-│   ├── config/          # Shared constants (departments)
-│   ├── db/              # Drizzle schema and db client
-│   ├── email/           # Resend client and HTML templates
-│   ├── queries/         # Database read functions
-│   └── validations/     # Zod schemas
-└── types/               # Shared TypeScript types
+ServiceFlow_v2Frontend/
+├── src/components/      # Reusable UI and layout components
+├── src/features/        # Domain-specific React components
+└── src/assets/styles/   # Global styling
+
+ServiceFlow_v2Backend/
+├── src/auth/            # Auth.js configuration
+├── src/features/        # Server actions and database queries by domain
+├── src/email/           # Resend client and email templates
+├── src/config/          # Environment validation
+└── src/utils/           # Backend-only helpers
+
+ServiceFlow_v2Database/
+├── src/schema.ts        # Drizzle schema source of truth
+├── src/client.ts        # Drizzle client
+├── migrations/          # Generated migrations
+└── seeds/               # Demo seed data
+
+ServiceFlow_v2Shared/
+├── src/constants/       # Cross-boundary constants
+├── src/types/           # Shared TypeScript types
+├── src/validation/      # Zod schemas
+└── src/utils/           # Pure shared utilities
+
+src/app/                 # Required Next.js App Router adapter
+docs/                    # Setup, API, and architecture notes
+infrastructure/          # Deployment and cloud config placeholder
+scripts/                 # Automation placeholder
+tests/                   # End-to-end tests only
+```
+
+`src/app` stays at the project root because Next.js only detects App Router routes from `app` or `src/app`. The other `src/components`, `src/features`, `src/lib`, `src/shared`, and `src/types` entries are thin compatibility shims. New code should import from `@frontend`, `@backend`, `@database`, or `@shared`.
+
+### Quality checks
+
+```bash
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm test
 ```
 
 ---
@@ -154,7 +167,7 @@ src/
 3. Add all environment variables from `.env.example` in the Vercel project settings.
 4. Run migrations against your production database before the first deploy:
    ```bash
-   DATABASE_URL=<prod-url> npx drizzle-kit migrate
+   DATABASE_URL=<prod-url> pnpm db:migrate
    ```
 5. Deploy. Vercel detects Next.js automatically.
 

@@ -1,20 +1,22 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@backend/auth/config";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Building2, User, Tag, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { StatusBadge, PriorityBadge } from "@/components/requests/status-badge";
-import { RequestEditForm } from "@/components/requests/request-edit-form";
-import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
-import { CommentThread } from "@/components/comments/CommentThread";
-import { CommentForm } from "@/components/comments/CommentForm";
-import { getRequestById } from "@/lib/queries/requests";
-import { getActivitiesForRequest } from "@/lib/queries/activities";
-import { getCommentsForRequest } from "@/lib/queries/comments";
-import { REQUEST_TYPE_LABELS, formatDate } from "@/lib/utils";
+import { cn } from "@shared/utils";
+import { buttonVariants } from "@frontend/components/ui/button";
+import { Separator } from "@frontend/components/ui/separator";
+import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
+import { CommentForm } from "@frontend/features/comments/components/comment-form";
+import { CommentThread } from "@frontend/features/comments/components/comment-thread";
+import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
+import { RequestEditForm } from "@frontend/features/requests/components/request-edit-form";
+import { REQUEST_TYPE_LABELS } from "@shared/constants/requests";
+import { getActivitiesForRequest } from "@backend/features/activities/queries";
+import { getCommentsForRequest } from "@backend/features/comments/queries";
+import { getRequestById } from "@backend/features/requests/queries";
+import { formatDate } from "@shared/utils";
 
+// Renders a request detail view with comments, edit form, and activity timeline.
 export default async function RequestDetailPage({
   params,
   searchParams,

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sidebar } from "@frontend/components/layout/sidebar";
+import { Header } from "@frontend/components/layout/header";
+import { Sheet, SheetContent } from "@frontend/components/ui/sheet";
 
 export default function DashboardLayout({
   children,

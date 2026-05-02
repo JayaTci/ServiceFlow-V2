@@ -1,5 +1,11 @@
 /**
- * Re-export shim — all auth actions have moved to @/lib/actions/auth.
- * This file is kept to avoid breaking imports in existing pages.
+ * Re-export shim. Auth actions live in the auth feature module.
  */
-export { registerUser, loginUser, logoutUser, forgotPassword, resetPassword } from "@/lib/actions/auth";
+export {
+  forgotPassword,
+  loginUser,
+  logoutUser,
+  registerUser,
+  resetPassword,
+  updateProfile,
+} from "@backend/features/auth/actions";

@@ -19,7 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@frontend/*": ["./ServiceFlow_v2Frontend/src/*"],
+      "@backend/*": ["./ServiceFlow_v2Backend/src/*"],
+      "@database/*": ["./ServiceFlow_v2Database/src/*"],
+      "@shared/*": ["./ServiceFlow_v2Shared/src/*"]
     }
   },
   "include": [

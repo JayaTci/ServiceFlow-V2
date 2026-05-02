@@ -1,0 +1,8 @@
+export {
+  DEPARTMENTS,
+  PRIORITY_COLORS,
+  PRIORITY_LABELS,
+  REQUEST_TYPE_LABELS,
+  STATUS_COLORS,
+  STATUS_LABELS,
+} from "@shared/constants/requests";

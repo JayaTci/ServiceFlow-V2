@@ -64,5 +64,8 @@ assets/
 # internal/codex files
 .codex/
 
+# local workspace scratchpad
+_workspace/
+
 # project plan documents (internal)
 Plan/

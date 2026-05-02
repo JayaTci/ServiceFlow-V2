@@ -8,11 +8,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Layers, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { resetPassword } from "@/lib/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { resetPassword } from "@backend/features/auth/actions";
+import { Button } from "@frontend/components/ui/button";
+import { Input } from "@frontend/components/ui/input";
+import { Label } from "@frontend/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@frontend/components/ui/card";
 
 const schema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -23,6 +23,7 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
+// Renders and submits the password reset form for a tokenized reset link.
 function ResetForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -89,6 +90,7 @@ function ResetForm() {
   );
 }
 
+// Wraps the reset form in Suspense because the token comes from search params.
 export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

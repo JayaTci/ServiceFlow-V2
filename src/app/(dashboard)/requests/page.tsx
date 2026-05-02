@@ -1,23 +1,23 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@backend/auth/config";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, SlidersHorizontal } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@shared/utils";
+import { buttonVariants } from "@frontend/components/ui/button";
+import { Button } from "@frontend/components/ui/button";
+import { Input } from "@frontend/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { RequestTable } from "@/components/requests/request-table";
-import { getRequests } from "@/lib/queries/requests";
-import { requestFiltersSchema } from "@/lib/validations/request";
-import { STATUS_LABELS, REQUEST_TYPE_LABELS, PRIORITY_LABELS, DEPARTMENTS } from "@/lib/utils";
-import type { Status, RequestType, Priority } from "@/lib/db/schema";
+} from "@frontend/components/ui/select";
+import { RequestTable } from "@frontend/features/requests/components/request-table";
+import { STATUS_LABELS, REQUEST_TYPE_LABELS, PRIORITY_LABELS, DEPARTMENTS } from "@shared/constants/requests";
+import { getRequests } from "@backend/features/requests/queries";
+import { requestFiltersSchema } from "@shared/validation/request";
+import type { Status, RequestType, Priority } from "@database/schema";
 
 interface SearchParams {
   search?: string;
@@ -30,6 +30,7 @@ interface SearchParams {
 
 const ACTIVE_FILTER_KEYS = ["status", "requestType", "department", "priority"] as const;
 
+// Renders the authenticated request list with filters and pagination.
 export default async function RequestsPage({
   searchParams,
 }: {

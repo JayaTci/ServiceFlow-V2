@@ -1,25 +1,26 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@backend/auth/config";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { SummaryCards } from "@/components/dashboard/summary-cards";
-import { StatusChart } from "@/components/dashboard/status-chart";
-import { SimpleBarChart } from "@/components/dashboard/bar-chart";
-import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
-import { StatusBadge, PriorityBadge } from "@/components/requests/status-badge";
+import { cn } from "@shared/utils";
+import { buttonVariants } from "@frontend/components/ui/button";
+import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
+import { SummaryCards } from "@frontend/features/dashboard/components/summary-cards";
+import { SimpleBarChart } from "@frontend/features/dashboard/components/bar-chart";
+import { StatusChart } from "@frontend/features/dashboard/components/status-chart";
+import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
 import {
   getDashboardStats,
   getCountByStatus,
   getCountByType,
   getCountByDepartment,
   getMonthlyTrend,
-} from "@/lib/queries/reports";
-import { getRequests } from "@/lib/queries/requests";
-import { getRecentActivities } from "@/lib/queries/activities";
-import { formatDate } from "@/lib/utils";
+} from "@backend/features/reports/queries";
+import { getRecentActivities } from "@backend/features/activities/queries";
+import { getRequests } from "@backend/features/requests/queries";
+import { formatDate } from "@shared/utils";
 
+// Renders the authenticated dashboard summary and recent activity.
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -46,7 +47,7 @@ export default async function DashboardPage() {
             Welcome back, {session.user.name?.split(" ")[0]}
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Here's what's happening with your requests today.
+            Here&apos;s what&apos;s happening with your requests today.
           </p>
         </div>
         <Link href="/requests/new" className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}>

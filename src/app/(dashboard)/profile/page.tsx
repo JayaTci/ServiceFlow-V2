@@ -7,19 +7,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Loader2, User, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@frontend/components/ui/button";
+import { Input } from "@frontend/components/ui/input";
+import { Label } from "@frontend/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DEPARTMENTS } from "@/lib/config/departments";
-import { updateProfile } from "@/lib/actions/auth";
+} from "@frontend/components/ui/select";
+import { Avatar, AvatarFallback } from "@frontend/components/ui/avatar";
+import { updateProfile } from "@backend/features/auth/actions";
+import { DEPARTMENTS } from "@shared/constants/departments";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -38,6 +38,7 @@ const passwordSchema = z.object({
 type ProfileForm = z.infer<typeof profileSchema>;
 type PasswordForm = z.infer<typeof passwordSchema>;
 
+// Renders profile settings and submits profile/password updates.
 export default function ProfilePage() {
   const { data: session, update } = useSession();
   const [profileLoading, setProfileLoading] = useState(false);

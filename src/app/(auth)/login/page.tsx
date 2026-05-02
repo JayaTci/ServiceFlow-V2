@@ -8,10 +8,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Layers, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { loginSchema, type LoginInput } from "@shared/validation/auth";
+import { Button } from "@frontend/components/ui/button";
+import { Input } from "@frontend/components/ui/input";
+import { Label } from "@frontend/components/ui/label";
 
 const FEATURES = [
   "Track requests from submission to resolution",
@@ -20,6 +20,7 @@ const FEATURES = [
   "Full audit trail & activity log",
 ];
 
+// Renders the login form and submits credentials to Auth.js.
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);

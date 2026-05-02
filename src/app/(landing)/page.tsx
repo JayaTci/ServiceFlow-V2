@@ -4,7 +4,6 @@ import {
   ArrowRight,
   CheckCircle2,
   BarChart3,
-  Users,
   Shield,
   Zap,
   MessageSquare,
@@ -15,8 +14,8 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@frontend/components/ui/button";
+import { Badge } from "@frontend/components/ui/badge";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -86,6 +85,7 @@ const STATS = [
 
 // ─── Nav ─────────────────────────────────────────────────────────────────────
 
+// Renders the public landing-page navigation.
 function Nav() {
   return (
     <header className="fixed top-0 inset-x-0 z-50 h-16 bg-background/80 backdrop-blur-md border-b border-border/60">
@@ -123,6 +123,7 @@ function Nav() {
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
+// Renders the landing hero section and primary calls to action.
 function Hero() {
   return (
     <section className="relative pt-32 pb-24 overflow-hidden">
@@ -202,6 +203,7 @@ function Hero() {
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
+// Renders portfolio metrics for the landing page.
 function Stats() {
   return (
     <section id="stats" className="py-16 border-y border-border/60 bg-muted/30">
@@ -221,6 +223,7 @@ function Stats() {
 
 // ─── Features ─────────────────────────────────────────────────────────────────
 
+// Renders the landing feature grid.
 function Features() {
   return (
     <section id="features" className="py-24">
@@ -266,6 +269,7 @@ function Features() {
 
 // ─── How It Works ─────────────────────────────────────────────────────────────
 
+// Renders the three-step product workflow section.
 function HowItWorks() {
   return (
     <section id="how-it-works" className="py-24 bg-muted/20">
@@ -308,6 +312,7 @@ function HowItWorks() {
 
 // ─── CTA Banner ───────────────────────────────────────────────────────────────
 
+// Renders the final landing-page call-to-action banner.
 function CTABanner() {
   return (
     <section className="py-24">
@@ -356,6 +361,7 @@ function CTABanner() {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
+// Renders the public landing footer.
 function Footer() {
   return (
     <footer className="border-t border-border/60 py-10">
@@ -383,6 +389,7 @@ function Footer() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// Composes the public marketing landing page.
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">

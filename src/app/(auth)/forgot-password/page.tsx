@@ -7,17 +7,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Layers, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { forgotPassword } from "@/lib/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { forgotPassword } from "@backend/features/auth/actions";
+import { Button } from "@frontend/components/ui/button";
+import { Input } from "@frontend/components/ui/input";
+import { Label } from "@frontend/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@frontend/components/ui/card";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address"),
 });
 type FormData = z.infer<typeof schema>;
 
+// Renders the forgot-password flow and request feedback.
 export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

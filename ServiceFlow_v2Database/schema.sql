@@ -1,0 +1,2 @@
+-- Drizzle is the source of truth for the database schema.
+-- See ServiceFlow_v2Database/src/schema.ts and ServiceFlow_v2Database/migrations.

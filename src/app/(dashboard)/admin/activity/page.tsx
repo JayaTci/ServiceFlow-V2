@@ -1,8 +1,9 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@backend/auth/config";
 import { redirect } from "next/navigation";
-import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
-import { getRecentActivities } from "@/lib/queries/activities";
+import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
+import { getRecentActivities } from "@backend/features/activities/queries";
 
+// Renders the admin-only global activity feed.
 export default async function AdminActivityPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");

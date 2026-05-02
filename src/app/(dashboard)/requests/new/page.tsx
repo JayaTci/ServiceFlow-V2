@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RequestForm } from "@/components/requests/request-form";
-import { createRequest } from "@/lib/actions/requests";
-import type { CreateRequestInput } from "@/lib/validations/request";
+import { cn } from "@shared/utils";
+import { buttonVariants } from "@frontend/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@frontend/components/ui/card";
+import { RequestForm } from "@frontend/features/requests/components/request-form";
+import { createRequest } from "@backend/features/requests/actions";
+import type { CreateRequestInput } from "@shared/validation/request";
 
+// Renders the create request page and handles submission feedback.
 export default function NewRequestPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function NewRequestPage() {
       return;
     }
 
-    toast.success(`Request ${result.requestCode} created successfully`);
+    toast.success(`Request ${result.data?.requestCode} created successfully`);
     router.push("/requests");
   };
 

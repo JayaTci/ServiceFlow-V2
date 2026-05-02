@@ -1,13 +1,14 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@backend/auth/config";
 import { redirect } from "next/navigation";
 import { Shield, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getAllUsers } from "@/lib/queries/users";
-import { UserActions } from "@/components/admin/user-actions";
-import { CreateUserDialog } from "@/components/admin/create-user-dialog";
-import { formatDate } from "@/lib/utils";
+import { Badge } from "@frontend/components/ui/badge";
+import { Avatar, AvatarFallback } from "@frontend/components/ui/avatar";
+import { UserActions } from "@frontend/features/users/components/user-actions";
+import { CreateUserDialog } from "@frontend/features/users/components/create-user-dialog";
+import { getAllUsers } from "@backend/features/users/queries";
+import { formatDate } from "@shared/utils";
 
+// Renders the admin-only user management page.
 export default async function AdminUsersPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
