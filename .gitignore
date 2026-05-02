@@ -60,6 +60,8 @@ AGENTS.md
 # assets (not for public repo)
 assets/
 ../assets/
+!ServiceFlow_v2Frontend/src/assets/
+!ServiceFlow_v2Frontend/src/assets/**
 
 # internal/codex files
 .codex/
