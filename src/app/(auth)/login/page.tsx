@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
-import { Eye, EyeOff, Layers, Loader2 } from "lucide-react";
+import { Eye, Layers, Loader2 } from "lucide-react";
 import { Label } from "@frontend/components/ui/label";
 import { cn } from "@shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -262,7 +262,6 @@ export default function LoginPage() {
   // Interaction states
   const [isTyping, setIsTyping] = useState(false);
   const [isLookingAtEachOther, setIsLookingAtEachOther] = useState(false);
-  const [isPurplePeeking, setIsPurplePeeking] = useState(false);
 
   // Character refs for body lean calculation
   const purpleRef = useRef<HTMLDivElement>(null);
@@ -319,16 +318,6 @@ export default function LoginPage() {
     const t = setTimeout(() => setIsLookingAtEachOther(false), 800);
     return () => clearTimeout(t);
   }, [isTyping]);
-
-  // Purple sneaky peek when password is visible
-  useEffect(() => {
-    if (!(password.length > 0 && showPassword)) { setIsPurplePeeking(false); return; }
-    const t = setTimeout(() => {
-      setIsPurplePeeking(true);
-      setTimeout(() => setIsPurplePeeking(false), 800);
-    }, Math.random() * 3000 + 2000);
-    return () => clearTimeout(t);
-  }, [password, showPassword, isPurplePeeking]);
 
   /** Derives body lean and eye position offsets from mouse delta relative to a character. */
   const calcPos = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -457,15 +446,15 @@ export default function LoginPage() {
                     size={18} pupilSize={7} maxDistance={5}
                     eyeColor="white" pupilColor="#1a1a1a"
                     isBlinking={isPurpleBlinking}
-                    forceLookX={revealingPassword ? (isPurplePeeking ? 4 : -4) : isLookingAtEachOther ? 3 : undefined}
-                    forceLookY={revealingPassword ? (isPurplePeeking ? 5 : -4) : isLookingAtEachOther ? 4 : undefined}
+                    forceLookX={revealingPassword ? -5 : isLookingAtEachOther ? 3 : undefined}
+                    forceLookY={revealingPassword ? 6 : isLookingAtEachOther ? 4 : undefined}
                   />
                   <EyeBall
                     size={18} pupilSize={7} maxDistance={5}
                     eyeColor="white" pupilColor="#1a1a1a"
                     isBlinking={isPurpleBlinking}
-                    forceLookX={revealingPassword ? (isPurplePeeking ? 4 : -4) : isLookingAtEachOther ? 3 : undefined}
-                    forceLookY={revealingPassword ? (isPurplePeeking ? 5 : -4) : isLookingAtEachOther ? 4 : undefined}
+                    forceLookX={revealingPassword ? -5 : isLookingAtEachOther ? 3 : undefined}
+                    forceLookY={revealingPassword ? 6 : isLookingAtEachOther ? 4 : undefined}
                   />
                 </div>
               </div>
@@ -625,12 +614,15 @@ export default function LoginPage() {
             }}
           />
 
-          {/* Animated gradient heading keyframes */}
+          {/* Animated gradient heading keyframes + suppress browser native password reveal button */}
           <style>{`
             @keyframes sf-gradient-flow {
               0%   { background-position: 0% center; }
               100% { background-position: 200% center; }
             }
+            input[type="password"]::-ms-reveal { display: none; }
+            input[type="password"]::-ms-clear { display: none; }
+            input[type="password"]::-webkit-credentials-auto-fill-button { display: none; }
           `}</style>
 
           <div className="relative z-10 w-full max-w-[380px]">
@@ -714,13 +706,20 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   rightSlot={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                    </button>
+                    password.length > 0 ? (
+                      <button
+                        type="button"
+                        aria-label="Hold to reveal password"
+                        onMouseDown={() => setShowPassword(true)}
+                        onMouseUp={() => setShowPassword(false)}
+                        onMouseLeave={() => setShowPassword(false)}
+                        onTouchStart={(e) => { e.preventDefault(); setShowPassword(true); }}
+                        onTouchEnd={() => setShowPassword(false)}
+                        onTouchCancel={() => setShowPassword(false)}
+                      >
+                        <Eye className="size-5" />
+                      </button>
+                    ) : undefined
                   }
                 />
               </motion.div>

@@ -4,6 +4,7 @@ import { Menu, LogOut, User } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@frontend/components/ui/button";
 import { cn } from "@shared/utils";
+import { ThemeToggle } from "@frontend/components/layout/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,8 +64,9 @@ export function Header({ userName, userEmail, userRole, onMenuToggle }: HeaderPr
         </h1>
       </div>
 
-      {/* Right — user menu */}
+      {/* Right — theme toggle + user menu */}
       <div className="flex items-center gap-1.5">
+        <ThemeToggle />
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger
