@@ -4,6 +4,7 @@ import { Menu, LogOut, Sun, Moon, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@frontend/components/ui/button";
+import { cn } from "@shared/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,21 +81,22 @@ export function Header({ userName, userEmail, userRole, onMenuToggle }: HeaderPr
 
         {/* User menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 h-8 px-2 rounded-lg"
-              aria-label="User menu"
-            >
-              <Avatar className="w-6 h-6">
-                <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
-                {userName}
-              </span>
-            </Button>
+          <DropdownMenuTrigger
+            aria-label="User menu"
+            className={cn(
+              "inline-flex items-center gap-2 h-8 px-2 rounded-lg text-sm font-medium",
+              "hover:bg-accent hover:text-accent-foreground transition-colors",
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            )}
+          >
+            <Avatar className="w-6 h-6">
+              <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+              {userName}
+            </span>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-52">
