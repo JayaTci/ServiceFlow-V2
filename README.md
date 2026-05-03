@@ -101,7 +101,7 @@ This creates two demo accounts:
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@serviceflow.com | admin123 |
+| Admin | admin@serviceflow.com | local@dm1n |
 | User | john@serviceflow.com | user123 |
 
 ### 6. Start the dev server

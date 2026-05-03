@@ -170,7 +170,7 @@ export default function LoginPage() {
             <p className="font-semibold text-foreground/70">Demo accounts</p>
             <p>
               <span className="font-medium text-foreground/60">Admin:</span>{" "}
-              admin@serviceflow.com / admin123
+              maria@serviceflow.com / admin123
             </p>
             <p>
               <span className="font-medium text-foreground/60">User:</span>{" "}

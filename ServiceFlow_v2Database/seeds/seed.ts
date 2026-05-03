@@ -218,9 +218,9 @@ async function seed() {
 
   console.log(`✅ Created ${requestsToInsert.length} service requests`);
   console.log("\n📋 Login credentials:");
-  console.log("  Admin: admin@serviceflow.com / admin123");
+  console.log("  Admin: admin@serviceflow.com / local@dm1n");
   console.log("  User1: john@serviceflow.com / user123");
-  console.log("  User2: maria@serviceflow.com / user123");
+  console.log("  User2: maria@serviceflow.com / admin123");
   console.log("\n✅ Seeding complete!");
 
   await pool.end();
