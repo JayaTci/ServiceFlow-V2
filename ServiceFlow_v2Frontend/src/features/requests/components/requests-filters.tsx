@@ -98,7 +98,7 @@ export function RequestsFilters({
         </div>
 
         {/* Status */}
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
           <SelectTrigger className="h-8.5 w-[130px] text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -111,7 +111,7 @@ export function RequestsFilters({
         </Select>
 
         {/* Priority */}
-        <Select value={priority} onValueChange={setPriority}>
+        <Select value={priority} onValueChange={(v) => setPriority(v ?? "all")}>
           <SelectTrigger className="h-8.5 w-[120px] text-xs">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
@@ -124,7 +124,7 @@ export function RequestsFilters({
         </Select>
 
         {/* Type */}
-        <Select value={requestType} onValueChange={setRequestType}>
+        <Select value={requestType} onValueChange={(v) => setRequestType(v ?? "all")}>
           <SelectTrigger className="h-8.5 w-[140px] text-xs">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
@@ -137,7 +137,7 @@ export function RequestsFilters({
         </Select>
 
         {/* Department */}
-        <Select value={department} onValueChange={setDepartment}>
+        <Select value={department} onValueChange={(v) => setDepartment(v ?? "all")}>
           <SelectTrigger className="h-8.5 w-[140px] text-xs">
             <SelectValue placeholder="Department" />
           </SelectTrigger>
