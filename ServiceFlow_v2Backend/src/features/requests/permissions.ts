@@ -1,7 +1,8 @@
+import { isAdminRole } from "@backend/auth/rbac";
 import type { Role } from "@database/schema";
 
-/** Returns whether a user can edit/delete a service request. */
-export function canManageRequest({
+/** Returns whether a user can edit a service request. */
+export function canEditRequest({
   role,
   requestOwnerId,
   currentUserId,
@@ -10,5 +11,10 @@ export function canManageRequest({
   requestOwnerId: number;
   currentUserId: string;
 }) {
-  return role === "admin" || String(requestOwnerId) === currentUserId;
+  return isAdminRole(role) || String(requestOwnerId) === currentUserId;
+}
+
+/** Returns whether a user can delete a service request. */
+export function canDeleteRequest(role: Role) {
+  return isAdminRole(role);
 }

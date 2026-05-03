@@ -4,28 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
   createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
 } from "@tanstack/react-table";
-import { Eye, Pencil, Trash2, MoreHorizontal, ClipboardList } from "lucide-react";
+import { ClipboardList, Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { softDeleteRequest } from "@backend/features/requests/actions";
 import { Button } from "@frontend/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@frontend/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@frontend/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -34,11 +21,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@frontend/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@frontend/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@frontend/components/ui/table";
 import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
 import { REQUEST_TYPE_LABELS } from "@shared/constants/requests";
-import { softDeleteRequest } from "@backend/features/requests/actions";
-import { formatDate } from "@shared/utils";
 import type { ServiceRequestWithUser } from "@shared/types";
+import { formatDate } from "@shared/utils";
 
 interface RequestTableProps {
   data: ServiceRequestWithUser[];
@@ -101,8 +101,8 @@ export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: Reques
       id: "actions",
       header: "",
       cell: (info) => {
-        const req = info.row.original;
-        const canEdit = isAdmin || String(req.requestedById) === currentUserId;
+        const request = info.row.original;
+        const canEdit = isAdmin || String(request.requestedById) === currentUserId;
 
         return (
           <DropdownMenu>
@@ -110,21 +110,18 @@ export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: Reques
               <MoreHorizontal className="w-4 h-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push(`/requests/${req.id}`)}>
+              <DropdownMenuItem onClick={() => router.push(`/requests/${request.id}`)}>
                 <Eye className="w-4 h-4 mr-2" /> View
               </DropdownMenuItem>
               {canEdit && (
-                <>
-                  <DropdownMenuItem onClick={() => router.push(`/requests/${req.id}?edit=true`)}>
-                    <Pencil className="w-4 h-4 mr-2" /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => setDeleteId(req.id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" /> Delete
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={() => router.push(`/requests/${request.id}?edit=true`)}>
+                  <Pencil className="w-4 h-4 mr-2" /> Edit
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(request.id)}>
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete
+                </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -133,7 +130,6 @@ export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: Reques
     }),
   ];
 
-  // TanStack Table intentionally returns function-bearing objects; this component owns them locally.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
@@ -207,7 +203,6 @@ export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: Reques
         </Table>
       </div>
 
-      {/* Delete confirmation */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
@@ -217,7 +212,9 @@ export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: Reques
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>
+              Cancel
+            </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? "Deleting..." : "Delete"}
             </Button>

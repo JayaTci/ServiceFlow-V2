@@ -20,13 +20,13 @@ There is no public sign-up. Accounts are created and managed by admins through t
 |---------|---------|
 | Request tracking | Submit, categorize, and track requests from open to resolved |
 | Real-time dashboard | KPI cards, status distribution, department breakdown, monthly trend |
-| Role-based access | Admin and User roles with separate views and permissions |
+| Role-based access | Superadmin, Admin, and User roles with enforced hierarchy |
 | Activity log | Immutable per-request timeline covering every status change, edit, assignment, and comment |
-| Threaded comments | Add, edit, and delete comments on any request |
+| Threaded comments | Users can add and edit their own comments; only admins can delete |
 | Assignee field | Admins can assign requests to specific users |
 | Email notifications | Automatic emails on new requests, status changes, assignments, and comments |
 | Password reset | Secure token-based reset flow with 1-hour expiry |
-| Admin user management | Create, update role, and delete users with no public signup |
+| Admin user management | Create users, reset passwords, change roles, and deactivate accounts with no public signup |
 | Global activity feed | Admin-only view of the last 100 events across all requests |
 | Profile page | Users update their name, department, and password |
 | Dark and light themes | Both fully designed, switchable from the header |
@@ -97,11 +97,12 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-This creates two demo accounts:
+This is a destructive local sample-data seed. It clears existing users and requests, then creates three bootstrap accounts:
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@serviceflow.com | local@dm1n |
+| Superadmin | admin@serviceflow.com | local@dm1n123 |
+| Admin | maria@serviceflow.com | admin123 |
 | User | john@serviceflow.com | user123 |
 
 ### 6. Start the dev server
@@ -165,11 +166,17 @@ pnpm test
 1. Push the repo to GitHub.
 2. Import the project in Vercel and set the root directory to `ServiceFlow_v2`.
 3. Add all environment variables from `.env.example` in the Vercel project settings.
-4. Run migrations against your production database before the first deploy:
+4. `AUTH_SECRET` is mandatory on Vercel. Generate one locally with `openssl rand -base64 32` and set the same value in the Vercel project.
+5. Point `DATABASE_URL` at the same Supabase database you migrated and seeded. If the production database is empty, no bootstrap users will exist and sign-in will fail.
+6. Run migrations against your production database before the first deploy:
    ```bash
    DATABASE_URL=<prod-url> pnpm db:migrate
    ```
-5. Deploy. Vercel detects Next.js automatically.
+7. If you need the default bootstrap accounts in production without wiping existing data, run:
+   ```bash
+   DATABASE_URL=<prod-url> pnpm db:bootstrap-users
+   ```
+8. Deploy. Vercel detects Next.js automatically.
 
 For Supabase, use the pooler connection string with `?pgbouncer=true&connection_limit=1` for serverless compatibility.
 
@@ -179,7 +186,8 @@ For Supabase, use the pooler connection string with `?pgbouncer=true&connection_
 
 After seeding, log in at `/login` with:
 
-- **Admin:** admin@serviceflow.com / admin123
+- **Superadmin:** admin@serviceflow.com / local@dm1n123
+- **Admin:** maria@serviceflow.com / admin123
 - **User:** john@serviceflow.com / user123
 
 These are for local development only. Rotate or remove them before production.

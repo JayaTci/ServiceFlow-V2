@@ -17,6 +17,7 @@
     "db:generate": "drizzle-kit generate --config ServiceFlow_v2Database/drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config ServiceFlow_v2Database/drizzle.config.ts",
     "db:seed": "tsx ServiceFlow_v2Database/seeds/seed.ts",
+    "db:bootstrap-users": "tsx ServiceFlow_v2Database/seeds/bootstrap-users.ts",
     "db:studio": "drizzle-kit studio --config ServiceFlow_v2Database/drizzle.config.ts"
   },
   "dependencies": {

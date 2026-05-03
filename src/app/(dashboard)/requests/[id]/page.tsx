@@ -1,20 +1,19 @@
-import { auth } from "@backend/auth/config";
-import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Building2, User, Tag, Clock } from "lucide-react";
-import { cn } from "@shared/utils";
-import { buttonVariants } from "@frontend/components/ui/button";
-import { Separator } from "@frontend/components/ui/separator";
-import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
-import { CommentForm } from "@frontend/features/comments/components/comment-form";
-import { CommentThread } from "@frontend/features/comments/components/comment-thread";
-import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
-import { RequestEditForm } from "@frontend/features/requests/components/request-edit-form";
-import { REQUEST_TYPE_LABELS } from "@shared/constants/requests";
+import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, Building2, CalendarDays, Clock, Tag, User } from "lucide-react";
+import { getAuthFailureRedirect, getCurrentUserContext } from "@backend/auth/current-user";
 import { getActivitiesForRequest } from "@backend/features/activities/queries";
 import { getCommentsForRequest } from "@backend/features/comments/queries";
 import { getRequestById } from "@backend/features/requests/queries";
-import { formatDate } from "@shared/utils";
+import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
+import { CommentForm } from "@frontend/features/comments/components/comment-form";
+import { CommentThread } from "@frontend/features/comments/components/comment-thread";
+import { RequestEditForm } from "@frontend/features/requests/components/request-edit-form";
+import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
+import { buttonVariants } from "@frontend/components/ui/button";
+import { Separator } from "@frontend/components/ui/separator";
+import { REQUEST_TYPE_LABELS } from "@shared/constants/requests";
+import { cn, formatDate } from "@shared/utils";
 
 // Renders a request detail view with comments, edit form, and activity timeline.
 export default async function RequestDetailPage({
@@ -24,13 +23,13 @@ export default async function RequestDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ edit?: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  const currentUser = await getCurrentUserContext();
+  if (!currentUser.ok) redirect(getAuthFailureRedirect(currentUser.reason));
 
   const { id } = await params;
   const { edit } = await searchParams;
-  const requestId = parseInt(id);
-  if (isNaN(requestId)) notFound();
+  const requestId = Number.parseInt(id, 10);
+  if (Number.isNaN(requestId)) notFound();
 
   const [request, activities, comments] = await Promise.all([
     getRequestById(requestId),
@@ -40,14 +39,12 @@ export default async function RequestDetailPage({
 
   if (!request) notFound();
 
-  const isAdmin = session.user.role === "admin";
-  const isOwner = String(request.requestedById) === session.user.id;
-  const canEdit = isAdmin || isOwner;
+  const isOwner = String(request.requestedById) === currentUser.user.sessionUserId;
+  const canEdit = currentUser.user.isAdmin || isOwner;
   const isEditMode = edit === "true" && canEdit;
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-start gap-3">
         <Link
           href="/requests"
@@ -75,9 +72,7 @@ export default async function RequestDetailPage({
         )}
       </div>
 
-      {/* Two-column layout */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5">
-        {/* Left — details or edit form */}
         <div className="space-y-4">
           {isEditMode ? (
             <div className="rounded-xl border border-border bg-card p-6">
@@ -97,7 +92,6 @@ export default async function RequestDetailPage({
             </div>
           ) : (
             <div className="rounded-xl border border-border bg-card p-6 space-y-5">
-              {/* Description */}
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                   Description
@@ -109,7 +103,6 @@ export default async function RequestDetailPage({
 
               <Separator />
 
-              {/* Meta grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -165,7 +158,6 @@ export default async function RequestDetailPage({
             </div>
           )}
 
-          {/* Comments */}
           <div className="rounded-xl border border-border bg-card p-6 space-y-4">
             <h2 className="text-sm font-semibold text-foreground">
               Comments
@@ -177,15 +169,14 @@ export default async function RequestDetailPage({
             </h2>
             <CommentThread
               comments={comments}
-              currentUserId={session.user.id}
-              currentUserRole={session.user.role}
+              currentUserId={currentUser.user.sessionUserId}
+              currentUserRole={currentUser.user.role}
             />
             <Separator />
             <CommentForm requestId={requestId} />
           </div>
         </div>
 
-        {/* Right — activity timeline */}
         <div className="rounded-xl border border-border bg-card p-6 space-y-4 h-fit">
           <h2 className="text-sm font-semibold text-foreground">Activity</h2>
           <ActivityTimeline activities={activities} />

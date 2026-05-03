@@ -3,27 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  ClipboardList,
+  Activity,
   BarChart3,
-  Users,
-  X,
-  Layers,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  Layers,
+  LayoutDashboard,
   Shield,
-  Activity,
+  Users,
+  X,
 } from "lucide-react";
-import { cn } from "@shared/utils";
-import { Button } from "@frontend/components/ui/button";
 import { Avatar, AvatarFallback } from "@frontend/components/ui/avatar";
 import { Badge } from "@frontend/components/ui/badge";
+import { Button } from "@frontend/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@frontend/components/ui/tooltip";
+import { cn } from "@shared/utils";
 
 interface NavItem {
   href: string;
@@ -58,14 +58,12 @@ export function Sidebar({
   onClose,
 }: SidebarProps) {
   const pathname = usePathname();
-
   const initials = userName
-    ? userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    ? userName.split(" ").map((segment) => segment[0]).join("").toUpperCase().slice(0, 2)
     : "U";
-
-  const visibleItems = navItems.filter(
-    (item) => !item.adminOnly || role === "admin"
-  );
+  const isAdmin = role === "admin" || role === "superadmin";
+  const roleLabel = role === "superadmin" ? "Superadmin" : role === "admin" ? "Admin" : "User";
+  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <TooltipProvider>
@@ -75,7 +73,6 @@ export function Sidebar({
           collapsed ? "w-[60px]" : "w-64"
         )}
       >
-        {/* Logo */}
         <div
           className={cn(
             "flex items-center h-16 border-b border-sidebar-border shrink-0 transition-all",
@@ -84,21 +81,15 @@ export function Sidebar({
         >
           <Link
             href="/dashboard"
-            className={cn(
-              "flex items-center gap-2.5 min-w-0",
-              collapsed && "justify-center"
-            )}
+            className={cn("flex items-center gap-2.5 min-w-0", collapsed && "justify-center")}
           >
             <div className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center shrink-0 shadow-sm">
               <Layers className="w-4 h-4 text-white" />
             </div>
             {!collapsed && (
-              <span className="font-bold text-base text-sidebar-foreground truncate">
-                ServiceFlow
-              </span>
+              <span className="font-bold text-base text-sidebar-foreground truncate">ServiceFlow</span>
             )}
           </Link>
-          {/* Mobile close */}
           {onClose && !collapsed && (
             <Button
               variant="ghost"
@@ -111,13 +102,10 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto scrollbar-thin">
           {visibleItems.map((item) => {
             const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
+              item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
 
             const linkContent = (
               <Link
@@ -132,7 +120,6 @@ export function Sidebar({
                     : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
-                {/* Active indicator */}
                 {isActive && !collapsed && (
                   <span className="absolute left-0 w-0.5 h-6 bg-primary rounded-r-full" />
                 )}
@@ -142,9 +129,7 @@ export function Sidebar({
                     isActive ? "text-primary" : "text-sidebar-foreground/50"
                   )}
                 />
-                {!collapsed && (
-                  <span className="truncate">{item.label}</span>
-                )}
+                {!collapsed && <span className="truncate">{item.label}</span>}
               </Link>
             );
 
@@ -165,9 +150,7 @@ export function Sidebar({
           })}
         </nav>
 
-        {/* User + collapse toggle */}
         <div className="border-t border-sidebar-border px-2 py-3 space-y-2">
-          {/* Collapse toggle — desktop only */}
           {onToggleCollapse && (
             <button
               onClick={onToggleCollapse}
@@ -188,7 +171,6 @@ export function Sidebar({
             </button>
           )}
 
-          {/* User info */}
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger>
@@ -202,7 +184,7 @@ export function Sidebar({
               </TooltipTrigger>
               <TooltipContent side="right" className="text-xs">
                 <p className="font-medium">{userName}</p>
-                <p className="text-muted-foreground">{role}</p>
+                <p className="text-muted-foreground">{roleLabel}</p>
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -213,20 +195,16 @@ export function Sidebar({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {userName ?? "User"}
-                </p>
-                <p className="text-xs text-sidebar-foreground/40 truncate">
-                  {userEmail ?? ""}
-                </p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{userName ?? "User"}</p>
+                <p className="text-xs text-sidebar-foreground/40 truncate">{userEmail ?? ""}</p>
               </div>
-              {role === "admin" && (
+              {isAdmin && (
                 <Badge
                   variant="secondary"
                   className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-0 shrink-0"
                 >
                   <Shield className="w-2.5 h-2.5 mr-0.5" />
-                  Admin
+                  {roleLabel}
                 </Badge>
               )}
             </div>

@@ -1,34 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@database/client";
-import { serviceRequests, users } from "@database/schema";
-import { eq, and, isNull } from "drizzle-orm";
-import { auth } from "@backend/auth/config";
-import { createRequestSchema, updateRequestSchema } from "@shared/validation/request";
-import { getRequestCountForYear } from "@backend/features/requests/queries";
-import { canManageRequest } from "@backend/features/requests/permissions";
-import { generateRequestCode } from "@shared/utils";
+import { and, eq, isNull } from "drizzle-orm";
+import { getAuthFailureMessage, getCurrentUserContext } from "@backend/auth/current-user";
 import { logActivity } from "@backend/features/activities/actions";
+import { getRequestCountForYear } from "@backend/features/requests/queries";
+import { canDeleteRequest, canEditRequest } from "@backend/features/requests/permissions";
 import { sendEmail } from "@backend/email";
+import { requestAssignedTemplate } from "@backend/email/templates/request-assigned";
 import { requestCreatedTemplate } from "@backend/email/templates/request-created";
 import { statusChangedTemplate } from "@backend/email/templates/status-changed";
-import { requestAssignedTemplate } from "@backend/email/templates/request-assigned";
 import { logger } from "@backend/utils/logger";
-import { parseUserId } from "@backend/utils/parse-user-id";
+import { db } from "@database/client";
+import { serviceRequests, users } from "@database/schema";
 import { actionError, actionSuccess, type ActionResult } from "@shared/action-result";
-import type { CreateRequestInput, UpdateRequestInput } from "@shared/validation/request";
+import { generateRequestCode } from "@shared/utils";
+import {
+  createRequestSchema,
+  updateRequestSchema,
+  type CreateRequestInput,
+  type UpdateRequestInput,
+} from "@shared/validation/request";
 
 /** Creates a request for the authenticated user and triggers audit/email side effects. */
-export async function createRequest(data: CreateRequestInput): Promise<ActionResult<{ requestCode: string }>> {
-  const session = await auth();
-  if (!session?.user) return actionError("Unauthorized");
+export async function createRequest(
+  data: CreateRequestInput
+): Promise<ActionResult<{ requestCode: string }>> {
+  const currentUser = await getCurrentUserContext();
+  if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
 
   const parsed = createRequestSchema.safeParse(data);
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
-
-  const actorId = parseUserId(session.user.id);
-  if (actorId === null) return actionError("Unauthorized");
 
   const year = new Date().getFullYear();
   const count = await getRequestCountForYear(year);
@@ -42,29 +44,32 @@ export async function createRequest(data: CreateRequestInput): Promise<ActionRes
       .values({
         ...parsed.data,
         requestCode,
-        requestedById: actorId,
+        requestedById: currentUser.user.id,
       })
       .returning({ id: serviceRequests.id });
 
     newRequestId = inserted.id;
   } catch (err) {
     logger.error("Failed to create service request", {
-      userId: session.user.id,
+      userId: currentUser.user.id,
       error: String(err),
     });
     return actionError("Failed to create request. Please try again.");
   }
 
-  // Fire-and-forget: activity log + email notification
-  await logActivity({ requestId: newRequestId, actorId, action: "created" });
+  await logActivity({
+    requestId: newRequestId,
+    actorId: currentUser.user.id,
+    action: "created",
+  });
 
   const { subject, html } = requestCreatedTemplate({
-    requesterName: session.user.name ?? "User",
+    requesterName: currentUser.user.name,
     requestCode,
     requestTitle: parsed.data.title,
     requestId: newRequestId,
   });
-  await sendEmail({ to: session.user.email ?? "", subject, html });
+  await sendEmail({ to: currentUser.user.email, subject, html });
 
   revalidatePath("/requests");
   revalidatePath("/dashboard");
@@ -73,8 +78,8 @@ export async function createRequest(data: CreateRequestInput): Promise<ActionRes
 
 /** Updates an existing request when the current user owns it or has admin rights. */
 export async function updateRequest(id: number, data: UpdateRequestInput): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return actionError("Unauthorized");
+  const currentUser = await getCurrentUserContext();
+  if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
 
   const parsed = updateRequestSchema.safeParse(data);
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
@@ -96,17 +101,14 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
   if (!existing) return actionError("Request not found");
 
   if (
-    !canManageRequest({
-      role: session.user.role === "admin" ? "admin" : "user",
+    !canEditRequest({
+      role: currentUser.user.role,
       requestOwnerId: existing.requestedById,
-      currentUserId: session.user.id,
+      currentUserId: currentUser.user.sessionUserId,
     })
   ) {
     return actionError("Forbidden");
   }
-
-  const actorId = parseUserId(session.user.id);
-  if (actorId === null) return actionError("Unauthorized");
 
   const statusChanged = parsed.data.status !== existing.status;
   const resolvedAt =
@@ -126,17 +128,16 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
   } catch (err) {
     logger.error("Failed to update service request", {
       requestId: id,
-      userId: session.user.id,
+      userId: currentUser.user.id,
       error: String(err),
     });
     return actionError("Failed to update request. Please try again.");
   }
 
-  // Activity log + email on status change
   if (statusChanged) {
     await logActivity({
       requestId: id,
-      actorId,
+      actorId: currentUser.user.id,
       action: "status_changed",
       fieldChanged: "status",
       oldValue: existing.status,
@@ -153,7 +154,7 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
     });
     await sendEmail({ to: existing.requestedByEmail, subject, html });
   } else {
-    await logActivity({ requestId: id, actorId, action: "updated" });
+    await logActivity({ requestId: id, actorId: currentUser.user.id, action: "updated" });
   }
 
   revalidatePath("/requests");
@@ -164,9 +165,9 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
 
 /** Assigns or unassigns a request to a user; admin-only. */
 export async function assignRequest(id: number, assigneeId: number | null): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return actionError("Unauthorized");
-  if (session.user.role !== "admin") return actionError("Forbidden");
+  const currentUser = await getCurrentUserContext();
+  if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
+  if (!currentUser.user.isAdmin) return actionError("Forbidden");
 
   const [existing] = await db
     .select({
@@ -195,18 +196,14 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
     return actionError("Failed to assign request. Please try again.");
   }
 
-  const actorId = parseUserId(session.user.id);
-  if (actorId === null) return actionError("Unauthorized");
-
   if (assigneeId !== null) {
     await logActivity({
       requestId: id,
-      actorId,
+      actorId: currentUser.user.id,
       action: "assigned",
       newValue: String(assigneeId),
     });
 
-    // Email the new assignee
     const [assignee] = await db
       .select({ name: users.name, email: users.email })
       .from(users)
@@ -224,7 +221,7 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
       await sendEmail({ to: assignee.email, subject, html });
     }
   } else {
-    await logActivity({ requestId: id, actorId, action: "unassigned" });
+    await logActivity({ requestId: id, actorId: currentUser.user.id, action: "unassigned" });
   }
 
   revalidatePath("/requests");
@@ -232,10 +229,10 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
   return actionSuccess();
 }
 
-/** Soft-deletes a request when the current user owns it or has admin rights. */
+/** Soft-deletes a request when the current user has admin rights. */
 export async function softDeleteRequest(id: number): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return actionError("Unauthorized");
+  const currentUser = await getCurrentUserContext();
+  if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
 
   const [existing] = await db
     .select({ requestedById: serviceRequests.requestedById })
@@ -244,16 +241,7 @@ export async function softDeleteRequest(id: number): Promise<ActionResult> {
     .limit(1);
 
   if (!existing) return actionError("Request not found");
-
-  if (
-    !canManageRequest({
-      role: session.user.role === "admin" ? "admin" : "user",
-      requestOwnerId: existing.requestedById,
-      currentUserId: session.user.id,
-    })
-  ) {
-    return actionError("Forbidden");
-  }
+  if (!canDeleteRequest(currentUser.user.role)) return actionError("Forbidden");
 
   try {
     await db
@@ -263,18 +251,15 @@ export async function softDeleteRequest(id: number): Promise<ActionResult> {
   } catch (err) {
     logger.error("Failed to delete service request", {
       requestId: id,
-      userId: session.user.id,
+      userId: currentUser.user.id,
       error: String(err),
     });
     return actionError("Failed to delete request. Please try again.");
   }
 
-  const deleteActorId = parseUserId(session.user.id);
-  if (deleteActorId === null) return actionError("Unauthorized");
-
   await logActivity({
     requestId: id,
-    actorId: deleteActorId,
+    actorId: currentUser.user.id,
     action: "deleted",
   });
 

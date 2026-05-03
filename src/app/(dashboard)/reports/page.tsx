@@ -1,17 +1,17 @@
-import { auth } from "@backend/auth/config";
 import { redirect } from "next/navigation";
+import { getAuthFailureRedirect, getCurrentUserContext } from "@backend/auth/current-user";
+import {
+  getCountByDepartment,
+  getCountByPriority,
+  getCountByStatus,
+  getCountByType,
+  getDashboardStats,
+} from "@backend/features/reports/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@frontend/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@frontend/components/ui/tabs";
 import { SimpleBarChart } from "@frontend/features/dashboard/components/bar-chart";
 import { StatusChart } from "@frontend/features/dashboard/components/status-chart";
 import { DateRangeFilter } from "@frontend/features/reports/components/date-range-filter";
-import {
-  getDashboardStats,
-  getCountByStatus,
-  getCountByType,
-  getCountByDepartment,
-  getCountByPriority,
-} from "@backend/features/reports/queries";
 
 interface SearchParams {
   dateFrom?: string;
@@ -24,8 +24,8 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  const currentUser = await getCurrentUserContext();
+  if (!currentUser.ok) redirect(getAuthFailureRedirect(currentUser.reason));
 
   const { dateFrom, dateTo } = await searchParams;
 
@@ -49,24 +49,22 @@ export default async function ReportsPage({
         <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} />
       </div>
 
-      {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Total Requests", value: stats.total, color: "text-blue-600" },
           { label: "Pending", value: stats.pending, color: "text-yellow-600" },
           { label: "In Progress", value: stats.inProgress, color: "text-blue-500" },
           { label: "Resolved", value: stats.resolved, color: "text-green-600" },
-        ].map((s) => (
-          <Card key={s.label}>
+        ].map((item) => (
+          <Card key={item.label}>
             <CardContent className="p-4 text-center">
-              <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{item.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="status">
         <TabsList>
           <TabsTrigger value="status">By Status</TabsTrigger>
@@ -163,16 +161,21 @@ export default async function ReportsPage({
   );
 }
 
-// Renders report aggregate rows in a compact table.
 function ReportTable({ data }: { data: { label: string; count: number }[] }) {
-  const total = data.reduce((sum, r) => sum + r.count, 0);
+  const total = data.reduce((sum, row) => sum + row.count, 0);
+
   return (
     <div className="space-y-2">
       {data.map((row) => (
-        <div key={row.label} className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0">
+        <div
+          key={row.label}
+          className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0"
+        >
           <span className="text-foreground">{row.label}</span>
           <div className="flex items-center gap-3">
-            <span className="text-muted-foreground text-xs">{total > 0 ? ((row.count / total) * 100).toFixed(0) : 0}%</span>
+            <span className="text-muted-foreground text-xs">
+              {total > 0 ? ((row.count / total) * 100).toFixed(0) : 0}%
+            </span>
             <span className="font-semibold text-foreground w-8 text-right">{row.count}</span>
           </div>
         </div>

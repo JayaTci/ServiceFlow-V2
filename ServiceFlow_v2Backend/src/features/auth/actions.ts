@@ -2,19 +2,18 @@
 
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db } from "@database/client";
-import { users } from "@database/schema";
 import { eq } from "drizzle-orm";
+import { AuthError } from "next-auth";
+import { z } from "zod";
+import { getAuthFailureMessage, getCurrentUserContext } from "@backend/auth/current-user";
 import { signIn, signOut } from "@backend/auth/config";
-import { logger } from "@backend/utils/logger";
 import { sendEmail } from "@backend/email";
 import { passwordResetTemplate } from "@backend/email/templates/password-reset";
-import { registerSchema, type RegisterInput } from "@shared/validation/auth";
-import { z } from "zod";
-import { AuthError } from "next-auth";
+import { logger } from "@backend/utils/logger";
+import { db } from "@database/client";
+import { users } from "@database/schema";
 import { actionError, actionSuccess, type ActionResult } from "@shared/action-result";
-
-// ─── Registration ────────────────────────────────────────────────────────────��
+import { registerSchema, type RegisterInput } from "@shared/validation/auth";
 
 /** Registers a non-admin user through the internal account creation flow. */
 export async function registerUser(data: RegisterInput): Promise<ActionResult> {
@@ -23,7 +22,9 @@ export async function registerUser(data: RegisterInput): Promise<ActionResult> {
     return actionError(parsed.error.issues[0].message);
   }
 
-  const { name, email, password, department } = parsed.data;
+  const name = parsed.data.name.trim();
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password, department } = parsed.data;
 
   const [existing] = await db
     .select({ id: users.id })
@@ -44,6 +45,8 @@ export async function registerUser(data: RegisterInput): Promise<ActionResult> {
       passwordHash,
       role: "user",
       department: department || null,
+      isActive: true,
+      mustChangePassword: false,
     });
   } catch (err) {
     logger.error("Registration failed", { email, error: String(err) });
@@ -53,13 +56,11 @@ export async function registerUser(data: RegisterInput): Promise<ActionResult> {
   return actionSuccess();
 }
 
-// ─── Login / Logout ───────────────────────────────────────────────────────────
-
 /** Signs in a user with credentials through Auth.js. */
 export async function loginUser(data: { email: string; password: string }): Promise<ActionResult> {
   try {
     await signIn("credentials", {
-      email: data.email,
+      email: data.email.trim().toLowerCase(),
       password: data.password,
       redirect: false,
     });
@@ -77,8 +78,6 @@ export async function logoutUser() {
   await signOut({ redirectTo: "/login" });
 }
 
-// ─── Password Reset ───────────────────────────────────────────────────────────
-
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
@@ -92,18 +91,18 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
   const parsed = forgotPasswordSchema.safeParse({ email });
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
+  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+
   const [user] = await db
-    .select({ id: users.id, name: users.name, email: users.email })
+    .select({ id: users.id, name: users.name, email: users.email, isActive: users.isActive })
     .from(users)
-    .where(eq(users.email, parsed.data.email))
+    .where(eq(users.email, normalizedEmail))
     .limit(1);
 
-  if (user) {
-    // Generate a cryptographically secure token
+  if (user?.isActive) {
     const rawToken = crypto.randomUUID();
-    // Store a hash so the raw token is never saved in the DB
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
     try {
       await db
@@ -117,7 +116,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
       const { subject, html } = passwordResetTemplate({
         userName: user.name,
-        resetToken: rawToken, // Raw token goes in the email link
+        resetToken: rawToken,
       });
 
       await sendEmail({ to: user.email, subject, html });
@@ -129,7 +128,6 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     }
   }
 
-  // Always return success — never reveal whether the email exists
   return actionSuccess(
     undefined,
     "If an account with that email exists, you'll receive a reset link shortly."
@@ -138,10 +136,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(100),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100),
 });
 
 /** Validates the reset token and sets the new password. */
@@ -149,23 +144,21 @@ export async function resetPassword(token: string, newPassword: string): Promise
   const parsed = resetPasswordSchema.safeParse({ token, password: newPassword });
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
-  // Hash the incoming token to compare with the stored hash
-  const tokenHash = crypto
-    .createHash("sha256")
-    .update(parsed.data.token)
-    .digest("hex");
+  const tokenHash = crypto.createHash("sha256").update(parsed.data.token).digest("hex");
 
   const [user] = await db
     .select({
       id: users.id,
       passwordResetToken: users.passwordResetToken,
       passwordResetExpiresAt: users.passwordResetExpiresAt,
+      isActive: users.isActive,
     })
     .from(users)
     .where(eq(users.passwordResetToken, tokenHash))
     .limit(1);
 
   if (!user) return actionError("Invalid or expired reset link.");
+  if (!user.isActive) return actionError("This account is inactive.");
 
   if (!user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
     return actionError("This reset link has expired. Please request a new one.");
@@ -180,6 +173,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
         passwordHash,
         passwordResetToken: null,
         passwordResetExpiresAt: null,
+        mustChangePassword: false,
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
@@ -191,8 +185,6 @@ export async function resetPassword(token: string, newPassword: string): Promise
   return actionSuccess();
 }
 
-// ─── Profile Update ───────────────────────────────────────────────────────────
-
 const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(80),
   department: z.string().nullable().optional(),
@@ -201,39 +193,54 @@ const updateProfileSchema = z.object({
 });
 
 /** Updates the authenticated user's name, department, and optionally password. */
-export async function updateProfile(
-  userId: number,
-  data: { name: string; department?: string | null; currentPassword?: string; newPassword?: string }
-): Promise<ActionResult> {
+export async function updateProfile(data: {
+  name: string;
+  department?: string | null;
+  currentPassword?: string;
+  newPassword?: string;
+}): Promise<ActionResult<{ passwordChanged: boolean }>> {
   const parsed = updateProfileSchema.safeParse(data);
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
+
+  const currentUser = await getCurrentUserContext({ allowMustChangePassword: true });
+  if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
 
   const [user] = await db
     .select({ id: users.id, passwordHash: users.passwordHash })
     .from(users)
-    .where(eq(users.id, userId))
+    .where(eq(users.id, currentUser.user.id))
     .limit(1);
 
   if (!user) return actionError("User not found.");
 
   const updateFields: Partial<typeof users.$inferInsert> = {
-    name: parsed.data.name,
+    name: parsed.data.name.trim(),
     department: parsed.data.department ?? null,
     updatedAt: new Date(),
   };
+  let passwordChanged = false;
 
   if (parsed.data.currentPassword && parsed.data.newPassword) {
     const valid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
     if (!valid) return actionError("Current password is incorrect.");
     updateFields.passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
+    updateFields.mustChangePassword = false;
+    updateFields.passwordResetToken = null;
+    updateFields.passwordResetExpiresAt = null;
+    passwordChanged = true;
+  } else if (currentUser.user.mustChangePassword) {
+    return actionError("You must change your password before continuing.");
   }
 
   try {
-    await db.update(users).set(updateFields).where(eq(users.id, userId));
+    await db.update(users).set(updateFields).where(eq(users.id, currentUser.user.id));
   } catch (err) {
-    logger.error("Profile update failed", { userId, error: String(err) });
+    logger.error("Profile update failed", {
+      userId: currentUser.user.id,
+      error: String(err),
+    });
     return actionError("Failed to save changes. Please try again.");
   }
 
-  return actionSuccess();
+  return actionSuccess({ passwordChanged });
 }

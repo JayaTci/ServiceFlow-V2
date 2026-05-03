@@ -1,9 +1,20 @@
+import { eq } from "drizzle-orm";
 import { db } from "@database/client";
 import { users } from "@database/schema";
-import { eq } from "drizzle-orm";
 import type { User } from "@database/schema";
 
-type SafeUser = Pick<User, "id" | "name" | "email" | "role" | "department" | "createdAt" | "updatedAt">;
+type SafeUser = Pick<
+  User,
+  | "id"
+  | "name"
+  | "email"
+  | "role"
+  | "department"
+  | "isActive"
+  | "mustChangePassword"
+  | "createdAt"
+  | "updatedAt"
+>;
 
 export async function getAllUsers(): Promise<SafeUser[]> {
   return db
@@ -13,6 +24,8 @@ export async function getAllUsers(): Promise<SafeUser[]> {
       email: users.email,
       role: users.role,
       department: users.department,
+      isActive: users.isActive,
+      mustChangePassword: users.mustChangePassword,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -28,6 +41,8 @@ export async function getUserById(id: number): Promise<SafeUser | null> {
       email: users.email,
       role: users.role,
       department: users.department,
+      isActive: users.isActive,
+      mustChangePassword: users.mustChangePassword,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })

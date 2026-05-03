@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Pencil, Trash2, Check, X } from "lucide-react";
+import { Check, Pencil, Shield, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { deleteComment, updateComment } from "@backend/features/comments/actions";
 import { Avatar, AvatarFallback } from "@frontend/components/ui/avatar";
 import { Button } from "@frontend/components/ui/button";
 import { Textarea } from "@frontend/components/ui/textarea";
-import { deleteComment, updateComment } from "@backend/features/comments/actions";
-import { cn } from "@shared/utils";
 import type { CommentWithAuthor } from "@shared/types";
+import { cn } from "@shared/utils";
 
 interface CommentItemProps {
   comment: CommentWithAuthor;
@@ -17,18 +17,21 @@ interface CommentItemProps {
   currentUserRole: string;
 }
 
-// Renders one comment with edit/delete controls based on ownership and role.
 function CommentItem({ comment, currentUserId, currentUserRole }: CommentItemProps) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [saving, setSaving] = useState(false);
-
   const initials = comment.author.name
-    .split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+    .split(" ")
+    .map((segment) => segment[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const canEdit = String(comment.authorId) === currentUserId;
-  const canDelete =
-    String(comment.authorId) === currentUserId || currentUserRole === "admin";
+  const canDelete = currentUserRole === "admin" || currentUserRole === "superadmin";
+  const isElevated = comment.author.role === "admin" || comment.author.role === "superadmin";
+  const roleLabel = comment.author.role === "superadmin" ? "Superadmin" : "Admin";
 
   const handleSave = async () => {
     if (!editContent.trim()) return;
@@ -61,14 +64,12 @@ function CommentItem({ comment, currentUserId, currentUserRole }: CommentItemPro
       </Avatar>
 
       <div className="flex-1 min-w-0">
-        {/* Header */}
         <div className="flex items-baseline gap-2 mb-1">
-          <span className="text-sm font-semibold text-foreground">
-            {comment.author.name}
-          </span>
-          {comment.author.role === "admin" && (
-            <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-              Admin
+          <span className="text-sm font-semibold text-foreground">{comment.author.name}</span>
+          {isElevated && (
+            <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+              <Shield className="w-2.5 h-2.5" />
+              {roleLabel}
             </span>
           )}
           <span className="text-xs text-muted-foreground ml-auto">
@@ -76,12 +77,11 @@ function CommentItem({ comment, currentUserId, currentUserRole }: CommentItemPro
           </span>
         </div>
 
-        {/* Body */}
         {editing ? (
           <div className="space-y-2">
             <Textarea
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
+              onChange={(event) => setEditContent(event.target.value)}
               className="min-h-[72px] text-sm resize-none"
               autoFocus
             />
@@ -99,7 +99,10 @@ function CommentItem({ comment, currentUserId, currentUserRole }: CommentItemPro
                 size="sm"
                 variant="ghost"
                 className="h-7 px-3 text-xs gap-1"
-                onClick={() => { setEditing(false); setEditContent(comment.content); }}
+                onClick={() => {
+                  setEditing(false);
+                  setEditContent(comment.content);
+                }}
               >
                 <X className="w-3 h-3" />
                 Cancel
@@ -111,11 +114,8 @@ function CommentItem({ comment, currentUserId, currentUserRole }: CommentItemPro
             <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
               {comment.content}
             </p>
-            {/* Actions — show on hover */}
             {(canEdit || canDelete) && (
-              <div className={cn(
-                "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
-              )}>
+              <div className={cn("flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity")}>
                 {canEdit && (
                   <Button
                     variant="ghost"

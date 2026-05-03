@@ -1,1 +1,6 @@
-export { adminCreateUser, deleteUser, updateUserRole } from "@backend/features/users/actions";
+export {
+  adminCreateUser,
+  setUserActive,
+  setUserTemporaryPassword,
+  updateUserRole,
+} from "@backend/features/users/actions";

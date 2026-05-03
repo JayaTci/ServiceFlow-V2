@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  boolean,
   timestamp,
   date,
   pgEnum,
@@ -13,7 +14,7 @@ import { relations } from "drizzle-orm";
 
 // ─── Enums ─────────────────────────────────────────────────────────────────
 
-export const roleEnum = pgEnum("role", ["admin", "user"]);
+export const roleEnum = pgEnum("role", ["superadmin", "admin", "user"]);
 
 export const requestTypeEnum = pgEnum("request_type", [
   "it_support",
@@ -50,6 +51,14 @@ export const activityActionEnum = pgEnum("activity_action", [
   "deleted",
 ]);
 
+export const accountAuditActionEnum = pgEnum("account_audit_action", [
+  "user_created",
+  "role_changed",
+  "deactivated",
+  "reactivated",
+  "temporary_password_set",
+]);
+
 // ─── Users ─────────────────────────────────────────────────────────────────
 
 export const users = pgTable(
@@ -60,6 +69,9 @@ export const users = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     role: roleEnum("role").notNull().default("user"),
+    isActive: boolean("is_active").notNull().default(true),
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
+    sessionVersion: integer("session_version").notNull().default(0),
     department: varchar("department", { length: 100 }),
     emailVerified: timestamp("email_verified"),
     // Password reset — token is stored hashed; cleared after use
@@ -130,6 +142,20 @@ export const requestActivities = pgTable("request_activities", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const accountAuditEvents = pgTable("account_audit_events", {
+  id: serial("id").primaryKey(),
+  actorId: integer("actor_id")
+    .references(() => users.id)
+    .notNull(),
+  targetUserId: integer("target_user_id")
+    .references(() => users.id)
+    .notNull(),
+  action: accountAuditActionEnum("action").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Relations ──────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -137,6 +163,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   assignedRequests: many(serviceRequests, { relationName: "assignee" }),
   comments: many(requestComments),
   activities: many(requestActivities),
+  accountAuditEventsActed: many(accountAuditEvents, { relationName: "accountAuditActor" }),
+  accountAuditEventsTargeted: many(accountAuditEvents, { relationName: "accountAuditTarget" }),
 }));
 
 export const serviceRequestsRelations = relations(
@@ -179,6 +207,19 @@ export const requestActivitiesRelations = relations(requestActivities, ({ one })
   }),
 }));
 
+export const accountAuditEventsRelations = relations(accountAuditEvents, ({ one }) => ({
+  actor: one(users, {
+    fields: [accountAuditEvents.actorId],
+    references: [users.id],
+    relationName: "accountAuditActor",
+  }),
+  targetUser: one(users, {
+    fields: [accountAuditEvents.targetUserId],
+    references: [users.id],
+    relationName: "accountAuditTarget",
+  }),
+}));
+
 // ─── Inferred Types ─────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -189,8 +230,11 @@ export type RequestComment = typeof requestComments.$inferSelect;
 export type NewRequestComment = typeof requestComments.$inferInsert;
 export type RequestActivity = typeof requestActivities.$inferSelect;
 export type NewRequestActivity = typeof requestActivities.$inferInsert;
+export type AccountAuditEvent = typeof accountAuditEvents.$inferSelect;
+export type NewAccountAuditEvent = typeof accountAuditEvents.$inferInsert;
 export type Role = (typeof roleEnum.enumValues)[number];
 export type RequestType = (typeof requestTypeEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];
 export type Status = (typeof statusEnum.enumValues)[number];
 export type ActivityAction = (typeof activityActionEnum.enumValues)[number];
+export type AccountAuditAction = (typeof accountAuditActionEnum.enumValues)[number];

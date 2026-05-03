@@ -14,6 +14,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const { auth } = NextAuth({
+  secret: process.env.AUTH_SECRET,
+  trustHost: true,
   providers: [],
   pages: { signIn: "/login" },
   session: { strategy: "jwt" },
@@ -26,51 +28,57 @@ const { auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.department = token.department as string | null;
+        session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        session.user.sessionVersion = Number(token.sessionVersion ?? 0);
       }
       return session;
     },
   },
 });
 
-export default auth((req: NextRequest & { auth: { user?: { role?: string } } | null }) => {
-  const isLoggedIn = !!req.auth;
-  const { pathname } = req.nextUrl;
+export default auth(
+  (req: NextRequest & { auth: { user?: { role?: string; mustChangePassword?: boolean } } | null }) => {
+    const isLoggedIn = !!req.auth;
+    const { pathname } = req.nextUrl;
 
-  const isProtected =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/requests") ||
-    pathname.startsWith("/reports") ||
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/profile");
+    const isProtected =
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/requests") ||
+      pathname.startsWith("/reports") ||
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/profile");
 
-  // Unauthenticated → login
-  if (isProtected && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    if (isProtected && !isLoggedIn) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    if (isLoggedIn && pathname === "/login") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
+    if (
+      isLoggedIn &&
+      req.auth?.user?.mustChangePassword &&
+      pathname !== "/profile" &&
+      !pathname.startsWith("/api")
+    ) {
+      return NextResponse.redirect(new URL("/profile?forcePasswordChange=1", req.url));
+    }
+
+    if (
+      pathname.startsWith("/admin") &&
+      req.auth?.user?.role !== "admin" &&
+      req.auth?.user?.role !== "superadmin"
+    ) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
+    return NextResponse.next();
   }
-
-  // Logged-in user visiting login → dashboard
-  if (isLoggedIn && pathname === "/login") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // Non-admin visiting admin routes → dashboard
-  if (pathname.startsWith("/admin") && req.auth?.user?.role !== "admin") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  return NextResponse.next();
-});
+);
 
 export const config = {
   matcher: [
-    /*
-     * Match everything EXCEPT:
-     * - /api/* (NextAuth API routes)
-     * - /_next/* (Next.js internals)
-     * - Static files
-     * - /forgot-password, /reset-password (public auth flows)
-     * - /login (handled inline above)
-     */
     "/((?!api|_next/static|_next/image|favicon.ico|forgot-password|reset-password).*)",
   ],
 };

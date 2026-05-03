@@ -1,4 +1,10 @@
-import type { ServiceRequest, User, RequestComment, RequestActivity } from "@database/schema";
+import type {
+  AccountAuditEvent,
+  RequestActivity,
+  RequestComment,
+  ServiceRequest,
+  User,
+} from "@database/schema";
 
 // ─── Request Types ───────────────────────────────────────────────────────────
 
@@ -36,6 +42,12 @@ export type CountByField = {
 /** Activity log entry with the actor's name. */
 export type ActivityWithActor = RequestActivity & {
   actor: Pick<User, "id" | "name" | "email">;
+};
+
+/** Account-management audit entry with actor and target user details. */
+export type AccountAuditEventWithUsers = AccountAuditEvent & {
+  actor: Pick<User, "id" | "name" | "email">;
+  targetUser: Pick<User, "id" | "name" | "email" | "role">;
 };
 
 /** Comment with the author's details. */
