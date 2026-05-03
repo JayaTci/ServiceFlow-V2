@@ -1,7 +1,6 @@
 "use client";
 
-import { Menu, LogOut, Sun, Moon, User } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Menu, LogOut, User } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@frontend/components/ui/button";
 import { cn } from "@shared/utils";
@@ -39,7 +38,6 @@ function getPageTitle(pathname: string): string {
 }
 
 export function Header({ userName, userEmail, userRole, onMenuToggle }: HeaderProps) {
-  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -65,20 +63,8 @@ export function Header({ userName, userEmail, userRole, onMenuToggle }: HeaderPr
         </h1>
       </div>
 
-      {/* Right — theme toggle + user menu */}
+      {/* Right — user menu */}
       <div className="flex items-center gap-1.5">
-        {/* Theme toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Toggle theme"
-        >
-          <Sun className="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute w-4 h-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        </Button>
-
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger

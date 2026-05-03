@@ -8,8 +8,10 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Layers, Loader2 } from "lucide-react";
 import { Label } from "@frontend/components/ui/label";
 import { cn } from "@shared/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { BlueprintBackground } from "@frontend/components/animations/shader-canvas";
 
-// ─── AppInput — input with mouse-tracking radial gradient border highlight ───
+// ─── AppInput — glass-styled input with mouse-tracking radial gradient border ─
 
 interface AppInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   /** Optional slot rendered at the right edge (e.g. password eye toggle). */
@@ -17,8 +19,8 @@ interface AppInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 /**
- * Input field with a radial gradient that highlights the top and bottom
- * border edges at the cursor's X position while the user hovers.
+ * Input field with glass dark styling and a radial gradient that highlights
+ * the top/bottom border edges at the cursor's X position while the user hovers.
  */
 const AppInput = ({ rightSlot, className, ...props }: AppInputProps) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -41,31 +43,32 @@ const AppInput = ({ rightSlot, className, ...props }: AppInputProps) => {
     >
       <input
         className={cn(
-          "relative z-10 border-2 border-border h-12 w-full rounded-md bg-background px-3 text-sm",
-          "text-foreground outline-none transition-colors placeholder:text-muted-foreground",
-          "focus:border-primary",
+          "relative z-10 border border-white/15 h-12 w-full rounded-lg",
+          "bg-white/[0.06] px-3 text-sm text-white",
+          "outline-none transition-all placeholder:text-white/30",
+          "focus:border-blue-400/60 focus:bg-white/[0.09]",
           rightSlot && "pr-10",
           className,
         )}
         {...props}
       />
       {rightSlot && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 text-muted-foreground hover:text-foreground transition-colors">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 text-white/40 hover:text-white/80 transition-colors">
           {rightSlot}
         </div>
       )}
       {hovering && (
         <>
           <div
-            className="absolute pointer-events-none top-0 left-0 right-0 h-[2px] z-20 rounded-t-md overflow-hidden"
+            className="absolute pointer-events-none top-0 left-0 right-0 h-[1px] z-20 rounded-t-lg overflow-hidden"
             style={{
-              background: `radial-gradient(30px circle at ${mousePos.x}px 0px, hsl(var(--primary)) 0%, transparent 70%)`,
+              background: `radial-gradient(30px circle at ${mousePos.x}px 0px, rgba(96,165,250,0.8) 0%, transparent 70%)`,
             }}
           />
           <div
-            className="absolute pointer-events-none bottom-0 left-0 right-0 h-[2px] z-20 rounded-b-md overflow-hidden"
+            className="absolute pointer-events-none bottom-0 left-0 right-0 h-[1px] z-20 rounded-b-lg overflow-hidden"
             style={{
-              background: `radial-gradient(30px circle at ${mousePos.x}px 2px, hsl(var(--primary)) 0%, transparent 70%)`,
+              background: `radial-gradient(30px circle at ${mousePos.x}px 2px, rgba(96,165,250,0.8) 0%, transparent 70%)`,
             }}
           />
         </>
@@ -84,6 +87,7 @@ interface PupilProps {
   forceLookY?: number;
 }
 
+/** Dark dot pupil that tracks the global mouse cursor position. */
 const Pupil = ({
   size = 12,
   maxDistance = 5,
@@ -146,6 +150,7 @@ interface EyeBallProps {
   forceLookY?: number;
 }
 
+/** White eyeball with a mouse-following pupil and optional blink state. */
 const EyeBall = ({
   size = 48,
   pupilSize = 16,
@@ -218,9 +223,21 @@ const BOOTSTRAP_ACCOUNTS = [
   { label: "User", value: "john@serviceflow.com / user123" },
 ];
 
+// ─── Motion variants ─────────────────────────────────────────────────────────
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 28, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease: "easeOut" } },
+} as const;
+
+const itemVariants = (delay: number) => ({
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, delay, ease: "easeOut" } },
+} as const);
+
 // ─── Login page ──────────────────────────────────────────────────────────────
 
-/** Animated login page — characters panel on left, form with gradient effects on right. */
+/** Premium login page — WebGL2 blueprint shader background, glassmorphism card, character panel. */
 export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -313,7 +330,7 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [password, showPassword, isPurplePeeking]);
 
-  // Body lean calculation from mouse delta vs character center
+  /** Derives body lean and eye position offsets from mouse delta relative to a character. */
   const calcPos = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (!ref.current) return { faceX: 0, faceY: 0, bodySkew: 0 };
     const rect = ref.current.getBoundingClientRect();
@@ -371,21 +388,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 lg:p-8">
-      <div className="w-full max-w-5xl grid lg:grid-cols-2 rounded-2xl overflow-hidden shadow-2xl border border-border">
+    <div className="min-h-screen bg-[#050b1a] flex items-center justify-center p-4 lg:p-8 relative overflow-hidden">
+      {/* WebGL2 blueprint grid shader — fixed full-page layer */}
+      <BlueprintBackground />
+
+      {/* Animated card entrance */}
+      <motion.div
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative z-10 w-full max-w-5xl grid lg:grid-cols-2 rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/60"
+      >
 
         {/* ── Left: characters + branding ─────────────────────────────────── */}
-        <div className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-primary-foreground overflow-hidden">
+        <div className="relative hidden lg:flex flex-col justify-between bg-blue-950/50 backdrop-blur-md p-12 text-white overflow-hidden">
+          {/* Subtle inner gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-blue-950/40 to-transparent pointer-events-none" />
+
           {/* Logo */}
-          <div className="relative z-20 flex items-center gap-2 text-lg font-semibold">
-            <div className="size-8 rounded-lg bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center">
+          <motion.div
+            variants={itemVariants(0.15)}
+            initial="hidden"
+            animate="visible"
+            className="relative z-20 flex items-center gap-2 text-lg font-semibold"
+          >
+            <div className="size-8 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center">
               <Layers className="size-4" />
             </div>
             <span>ServiceFlow</span>
-          </div>
+          </motion.div>
 
-          {/* Characters stage */}
-          <div className="relative z-20 flex items-end justify-center h-[500px]">
+          {/* Characters stage — gentle float */}
+          <motion.div
+            className="relative z-20 flex items-end justify-center h-[500px]"
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          >
             <div className="relative" style={{ width: "550px", height: "400px" }}>
 
               {/* Purple tall rectangle — back layer */}
@@ -551,24 +590,24 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Footer */}
-          <div className="relative z-20 flex items-center gap-8 text-sm text-primary-foreground/60">
-            <span className="text-primary-foreground/30 text-xs">
+          <motion.div
+            variants={itemVariants(0.3)}
+            initial="hidden"
+            animate="visible"
+            className="relative z-20 flex items-center gap-8 text-sm text-white/40"
+          >
+            <span className="text-white/25 text-xs">
               © {new Date().getFullYear()} ServiceFlow
             </span>
-          </div>
-
-          {/* Decorative blobs */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary-foreground/5 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute top-1/4 right-1/4 size-64 bg-primary-foreground/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-1/4 left-1/4 size-96 bg-primary-foreground/5 rounded-full blur-3xl pointer-events-none" />
+          </motion.div>
         </div>
 
         {/* ── Right: login form ────────────────────────────────────────────── */}
         <div
-          className="relative flex items-center justify-center p-8 bg-background overflow-hidden"
+          className="relative flex items-center justify-center p-8 bg-slate-950/70 backdrop-blur-md overflow-hidden"
           onMouseMove={handleFormMouseMove}
           onMouseEnter={() => setIsFormHovering(true)}
           onMouseLeave={() => setIsFormHovering(false)}
@@ -577,32 +616,67 @@ export default function LoginPage() {
           <div
             className={cn(
               "absolute pointer-events-none w-[500px] h-[500px] rounded-full blur-3xl transition-opacity duration-300",
-              "bg-gradient-to-r from-purple-300/20 via-blue-300/20 to-pink-300/20",
+              "bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-violet-500/15",
               isFormHovering ? "opacity-100" : "opacity-0",
             )}
             style={{
               transform: `translate(${formMouseX - 250}px, ${formMouseY - 250}px)`,
-              transition: "transform 0.1s ease-out, opacity 0.3s",
+              transition: "transform 0.12s ease-out, opacity 0.3s",
             }}
           />
 
+          {/* Animated gradient heading keyframes */}
+          <style>{`
+            @keyframes sf-gradient-flow {
+              0%   { background-position: 0% center; }
+              100% { background-position: 200% center; }
+            }
+          `}</style>
+
           <div className="relative z-10 w-full max-w-[380px]">
             {/* Mobile logo */}
-            <div className="lg:hidden flex items-center justify-center gap-2 text-lg font-semibold mb-12">
-              <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Layers className="size-4 text-primary" />
+            <motion.div
+              variants={itemVariants(0.1)}
+              initial="hidden"
+              animate="visible"
+              className="lg:hidden flex items-center justify-center gap-2 text-lg font-semibold mb-12 text-white"
+            >
+              <div className="size-8 rounded-lg bg-white/10 flex items-center justify-center">
+                <Layers className="size-4" />
               </div>
               <span>ServiceFlow</span>
-            </div>
+            </motion.div>
 
-            <div className="text-center mb-10">
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back!</h1>
-              <p className="text-muted-foreground text-sm">Sign in to your account</p>
-            </div>
+            <motion.div
+              variants={itemVariants(0.2)}
+              initial="hidden"
+              animate="visible"
+              className="text-center mb-10"
+            >
+              <h1
+                className="text-3xl font-bold tracking-tight mb-2"
+                style={{
+                  background: "linear-gradient(90deg, #60a5fa 0%, #a78bfa 40%, #34d399 80%, #60a5fa 100%)",
+                  backgroundSize: "200% auto",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  animation: "sf-gradient-flow 4s linear infinite",
+                }}
+              >
+                Welcome back!
+              </h1>
+              <p className="text-white/50 text-sm">Sign in to your account</p>
+            </motion.div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <motion.div
+                variants={itemVariants(0.3)}
+                initial="hidden"
+                animate="visible"
+                className="space-y-2"
+              >
+                <Label htmlFor="email" className="text-sm font-medium text-white/70">Email</Label>
                 <AppInput
                   id="email"
                   type="email"
@@ -614,14 +688,19 @@ export default function LoginPage() {
                   onBlur={() => setIsTyping(false)}
                   required
                 />
-              </div>
+              </motion.div>
 
-              <div className="space-y-2">
+              <motion.div
+                variants={itemVariants(0.38)}
+                initial="hidden"
+                animate="visible"
+                className="space-y-2"
+              >
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Label htmlFor="password" className="text-sm font-medium text-white/70">Password</Label>
                   <Link
                     href="/forgot-password"
-                    className="text-sm text-primary hover:underline font-medium"
+                    className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
                   >
                     Forgot password?
                   </Link>
@@ -644,54 +723,75 @@ export default function LoginPage() {
                     </button>
                   }
                 />
-              </div>
+              </motion.div>
 
-              {error && (
-                <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
-                  {error}
-                </div>
-              )}
-
-              {/* Shimmer submit button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={cn(
-                  "group/button relative w-full h-12 overflow-hidden rounded-md",
-                  "bg-primary text-primary-foreground text-sm font-medium",
-                  "flex items-center justify-center gap-2",
-                  "transition-all duration-300 hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/25",
-                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none",
-                )}
-              >
-                {isLoading && <Loader2 className="size-4 animate-spin" />}
-                <span>{isLoading ? "Signing in…" : "Sign in"}</span>
-                {!isLoading && (
-                  <div
-                    className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-700 group-hover/button:[transform:skew(-13deg)_translateX(100%)]"
-                    style={{ transition: "transform 0.7s" }}
+              {/* Error message with shake animation */}
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div
+                    key={error}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: [0, -8, 8, -5, 5, 0] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="p-3 text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg"
                   >
-                    <div className="relative h-full w-10 bg-white/20" />
-                  </div>
+                    {error}
+                  </motion.div>
                 )}
-              </button>
+              </AnimatePresence>
+
+              {/* Shimmer submit button — blue gradient */}
+              <motion.div
+                variants={itemVariants(0.46)}
+                initial="hidden"
+                animate="visible"
+              >
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={cn(
+                    "group/button relative w-full h-12 overflow-hidden rounded-lg",
+                    "bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold",
+                    "flex items-center justify-center gap-2",
+                    "transition-all duration-300 hover:scale-[1.01] hover:shadow-lg hover:shadow-blue-500/30",
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none",
+                  )}
+                >
+                  {isLoading && <Loader2 className="size-4 animate-spin" />}
+                  <span>{isLoading ? "Signing in…" : "Sign in"}</span>
+                  {!isLoading && (
+                    <div
+                      className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-700 group-hover/button:[transform:skew(-13deg)_translateX(100%)]"
+                      style={{ transition: "transform 0.7s" }}
+                    >
+                      <div className="relative h-full w-10 bg-white/25" />
+                    </div>
+                  )}
+                </button>
+              </motion.div>
             </form>
 
             {/* Dev bootstrap accounts — hidden in production */}
             {process.env.NODE_ENV !== "production" && (
-              <div className="mt-6 p-3.5 bg-muted/60 rounded-xl text-xs text-muted-foreground space-y-1.5 border border-border">
-                <p className="font-semibold text-foreground/70">Local bootstrap accounts</p>
+              <motion.div
+                variants={itemVariants(0.55)}
+                initial="hidden"
+                animate="visible"
+                className="mt-6 p-3.5 bg-white/[0.04] rounded-xl text-xs text-white/30 space-y-1.5 border border-white/[0.08]"
+              >
+                <p className="font-semibold text-white/50">Local bootstrap accounts</p>
                 {BOOTSTRAP_ACCOUNTS.map((account) => (
                   <p key={account.label}>
-                    <span className="font-medium text-foreground/60">{account.label}:</span>{" "}
+                    <span className="font-medium text-white/40">{account.label}:</span>{" "}
                     {account.value}
                   </p>
                 ))}
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
