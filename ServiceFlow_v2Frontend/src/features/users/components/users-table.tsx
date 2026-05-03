@@ -8,7 +8,7 @@ import { UserActions } from "@frontend/features/users/components/user-actions";
 import { formatDate } from "@shared/utils";
 
 interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
   role: string;
