@@ -11,36 +11,17 @@ import { cn } from "@shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { BlueprintBackground } from "@frontend/components/animations/shader-canvas";
 
-// ─── AppInput — glass-styled input with mouse-tracking radial gradient border ─
+// ─── AppInput — glass-styled input ───────────────────────────────────────────
 
 interface AppInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   /** Optional slot rendered at the right edge (e.g. password eye toggle). */
   rightSlot?: React.ReactNode;
 }
 
-/**
- * Input field with glass dark styling and a radial gradient that highlights
- * the top/bottom border edges at the cursor's X position while the user hovers.
- */
+/** Input field with glass dark styling. */
 const AppInput = ({ rightSlot, className, ...props }: AppInputProps) => {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [hovering, setHovering] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!wrapperRef.current) return;
-    const rect = wrapperRef.current.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
-
   return (
-    <div
-      ref={wrapperRef}
-      className="w-full relative"
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-    >
+    <div className="w-full relative">
       <input
         className={cn(
           "relative z-10 border border-white/15 h-12 w-full rounded-lg",
@@ -56,22 +37,6 @@ const AppInput = ({ rightSlot, className, ...props }: AppInputProps) => {
         <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 text-white/40 hover:text-white/80 transition-colors">
           {rightSlot}
         </div>
-      )}
-      {hovering && (
-        <>
-          <div
-            className="absolute pointer-events-none top-0 left-0 right-0 h-[1px] z-20 rounded-t-lg overflow-hidden"
-            style={{
-              background: `radial-gradient(30px circle at ${mousePos.x}px 0px, rgba(96,165,250,0.8) 0%, transparent 70%)`,
-            }}
-          />
-          <div
-            className="absolute pointer-events-none bottom-0 left-0 right-0 h-[1px] z-20 rounded-b-lg overflow-hidden"
-            style={{
-              background: `radial-gradient(30px circle at ${mousePos.x}px 2px, rgba(96,165,250,0.8) 0%, transparent 70%)`,
-            }}
-          />
-        </>
       )}
     </div>
   );
@@ -250,10 +215,6 @@ export default function LoginPage() {
   const [mouseX, setMouseX] = useState(0);
   const [mouseY, setMouseY] = useState(0);
 
-  // Form panel mouse position for the blob and gradient effect
-  const [formMouseX, setFormMouseX] = useState(0);
-  const [formMouseY, setFormMouseY] = useState(0);
-  const [isFormHovering, setIsFormHovering] = useState(false);
 
   // Blink state per character
   const [isPurpleBlinking, setIsPurpleBlinking] = useState(false);
@@ -342,13 +303,6 @@ export default function LoginPage() {
   const hidingPassword = isTyping || (password.length > 0 && !showPassword);
   const revealingPassword = password.length > 0 && showPassword;
 
-  /** Tracks mouse position relative to the form panel for the following blob. */
-  const handleFormMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setFormMouseX(e.clientX - rect.left);
-    setFormMouseY(e.clientY - rect.top);
-  };
-
   /** Submits credentials to the NextAuth credentials provider. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -377,7 +331,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050b1a] flex items-center justify-center p-4 lg:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#050f08] flex items-center justify-center p-4 lg:p-8 relative overflow-hidden">
       {/* WebGL2 blueprint grid shader — fixed full-page layer */}
       <BlueprintBackground />
 
@@ -597,22 +551,7 @@ export default function LoginPage() {
         {/* ── Right: login form ────────────────────────────────────────────── */}
         <div
           className="relative flex items-center justify-center p-8 bg-slate-950/70 backdrop-blur-md overflow-hidden"
-          onMouseMove={handleFormMouseMove}
-          onMouseEnter={() => setIsFormHovering(true)}
-          onMouseLeave={() => setIsFormHovering(false)}
         >
-          {/* Mouse-following gradient blob */}
-          <div
-            className={cn(
-              "absolute pointer-events-none w-[500px] h-[500px] rounded-full blur-3xl transition-opacity duration-300",
-              "bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-cyan-500/15",
-              isFormHovering ? "opacity-100" : "opacity-0",
-            )}
-            style={{
-              transform: `translate(${formMouseX - 250}px, ${formMouseY - 250}px)`,
-              transition: "transform 0.12s ease-out, opacity 0.3s",
-            }}
-          />
 
           {/* Animated gradient heading keyframes + suppress browser native password reveal button */}
           <style>{`

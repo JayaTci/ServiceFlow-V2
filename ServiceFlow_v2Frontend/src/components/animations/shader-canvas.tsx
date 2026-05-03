@@ -62,10 +62,10 @@ float majorGridAA(vec2 uv, float scale, float stepN, float width){
 
 vec3 meshGradient(vec2 uv){
   vec2 p0=vec2(-0.70,-0.45), p1=vec2(0.75,-0.35), p2=vec2(-0.65,0.65), p3=vec2(0.80,0.55);
-  vec3 c0=vec3(0.05,0.10,0.26);
-  vec3 c1=vec3(0.08,0.16,0.36);
-  vec3 c2=vec3(0.03,0.09,0.22);
-  vec3 c3=vec3(0.10,0.20,0.40);
+  vec3 c0=vec3(0.04,0.14,0.07);
+  vec3 c1=vec3(0.05,0.18,0.09);
+  vec3 c2=vec3(0.02,0.10,0.05);
+  vec3 c3=vec3(0.07,0.22,0.11);
   float e=2.0;
   float w0=pow(1.0/(0.2+distance(uv,p0)),e);
   float w1=pow(1.0/(0.2+distance(uv,p1)),e);
@@ -105,8 +105,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
   float t = iTime;
   vec2 uv = (fragCoord - 0.5*R) / max(R.y, 1.0);
 
-  vec3 baseDeep = vec3(0.03,0.06,0.12);
-  vec3 baseTint = vec3(0.05,0.09,0.18);
+  vec3 baseDeep = vec3(0.02,0.07,0.04);
+  vec3 baseTint = vec3(0.03,0.10,0.05);
   float vgrad   = smoothstep(-0.92, 0.55, -uv.y);
   vec3  bg      = mix(baseDeep, baseTint, vgrad);
   bg            = mix(bg, meshGradient(uv), MESH_AMT);
@@ -120,8 +120,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
   float thin  = gridLineAA (uvAnim, GRID_SCALE, THIN_WIDTH);
   float major = majorGridAA(uvAnim, GRID_SCALE, MAJOR_STEP, MAJOR_WIDTH);
 
-  vec3 lineThin  = vec3(0.58,0.66,0.95);
-  vec3 lineMajor = vec3(0.78,0.84,1.00);
+  vec3 lineThin  = vec3(0.35,0.80,0.50);
+  vec3 lineMajor = vec3(0.45,0.90,0.60);
 
   vec3 col = bg
            + lineThin  * thin  * 0.25
@@ -140,7 +140,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
     float glyph = asciiGlyph(cellF, lvl);
     float nearMajor = major;
     float asciiMask = asciiLineSel * nearMajor;
-    vec3 asciiColor = mix(vec3(0.50,0.70,1.0), meshGradient(uv), 0.25);
+    vec3 asciiColor = mix(vec3(0.35,0.85,0.55), meshGradient(uv), 0.25);
     col = mix(col, col + asciiColor * glyph * 0.30, ASCII_AMT * asciiMask);
   }
 
@@ -344,7 +344,7 @@ export function BlueprintBackground() {
         position: "fixed",
         inset: 0,
         zIndex: 0,
-        background: "#050b1a",
+        background: "#050f08",
         overflow: "hidden",
       }}
     >
