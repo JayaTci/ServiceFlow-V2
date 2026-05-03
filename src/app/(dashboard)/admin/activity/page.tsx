@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthFailureRedirect, getCurrentUserContext } from "@backend/auth/current-user";
 import { getRecentAccountAuditEvents } from "@backend/features/activities/account-audit-queries";
 import { getRecentActivities } from "@backend/features/activities/queries";
-import { AccountAuditList } from "@frontend/features/activities/components/account-audit-list";
-import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
+import { ActivityPanels } from "@frontend/features/activities/components/activity-panels";
 
 // Renders the admin-only global activity feed.
 export default async function AdminActivityPage() {
@@ -19,31 +18,19 @@ export default async function AdminActivityPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Activity Log</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          Activity{" "}
+          <span
+            className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent"
+            style={{ WebkitBackgroundClip: "text", backgroundClip: "text" }}
+          >
+            Log
+          </span>
+        </h2>
         <p className="text-sm text-muted-foreground mt-0.5">Last 100 events across all requests</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-foreground">Request Activity</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Status changes, comments, assignments, and request deletes.
-            </p>
-          </div>
-          <ActivityTimeline activities={activities} />
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-foreground">Account Activity</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              User creation, role changes, deactivations, and temporary password resets.
-            </p>
-          </div>
-          <AccountAuditList events={accountEvents} />
-        </div>
-      </div>
+      <ActivityPanels activities={activities} accountEvents={accountEvents} />
     </div>
   );
 }

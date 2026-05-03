@@ -1,13 +1,12 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Plus } from "lucide-react";
 import { getAuthFailureRedirect, getCurrentUserContext } from "@backend/auth/current-user";
 import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
 import { SummaryCards } from "@frontend/features/dashboard/components/summary-cards";
 import { SimpleBarChart } from "@frontend/features/dashboard/components/bar-chart";
 import { StatusChart } from "@frontend/features/dashboard/components/status-chart";
 import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
-import { buttonVariants } from "@frontend/components/ui/button";
+import { DashboardGreeting } from "@frontend/features/dashboard/components/dashboard-greeting";
+import { AnimatedChartPanel } from "@frontend/features/dashboard/components/animated-chart-panel";
 import { getRecentActivities } from "@backend/features/activities/queries";
 import { getRequests } from "@backend/features/requests/queries";
 import {
@@ -17,7 +16,7 @@ import {
   getDashboardStats,
   getMonthlyTrend,
 } from "@backend/features/reports/queries";
-import { cn, formatDate } from "@shared/utils";
+import { formatDate } from "@shared/utils";
 
 // Renders the authenticated dashboard summary and recent activity.
 export default async function DashboardPage() {
@@ -37,71 +36,55 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Welcome back, {currentUser.user.name.split(" ")[0]}
-          </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Here&apos;s what&apos;s happening with your requests today.
-          </p>
-        </div>
-        <Link href="/requests/new" className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}>
-          <Plus className="w-4 h-4" />
-          New Request
-        </Link>
-      </div>
+      <DashboardGreeting name={currentUser.user.name.split(" ")[0]} />
 
       <SummaryCards stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold text-foreground mb-4">By Status</p>
+        <AnimatedChartPanel title="By Status" delay={0.1}>
           <StatusChart data={byStatus} />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold text-foreground mb-4">By Request Type</p>
+        </AnimatedChartPanel>
+        <AnimatedChartPanel title="By Request Type" delay={0.15}>
           <SimpleBarChart data={byType} />
-        </div>
+        </AnimatedChartPanel>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold text-foreground mb-4">By Department</p>
+        <AnimatedChartPanel title="By Department" delay={0.2}>
           <SimpleBarChart data={byDept} color="#8b5cf6" />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold text-foreground mb-4">Monthly Trend</p>
+        </AnimatedChartPanel>
+        <AnimatedChartPanel title="Monthly Trend" delay={0.25}>
           <SimpleBarChart
             data={trend.map((item) => ({ label: item.month, value: item.month, count: item.count }))}
             color="#10b981"
           />
-        </div>
+        </AnimatedChartPanel>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Recent Requests</p>
-            <Link
-              href="/requests"
-              className="text-xs text-primary hover:underline flex items-center gap-1"
-            >
-              View all <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="divide-y divide-border/60">
+        {/* Recent Requests */}
+        <AnimatedChartPanel
+          title="Recent Requests"
+          delay={0.3}
+          viewAllHref="/requests"
+          className="p-0"
+        >
+          <div className="divide-y divide-border/50 -mx-5 -mb-5">
             {recentRequests.data.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-10">No requests yet.</p>
+              <p className="text-sm text-muted-foreground text-center py-10 px-5">
+                No requests yet.
+              </p>
             ) : (
               recentRequests.data.map((request) => (
-                <Link
+                <a
                   key={request.id}
                   href={`/requests/${request.id}`}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+                  className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors group"
                 >
                   <div className="min-w-0 flex-1 mr-4">
-                    <p className="text-sm font-medium text-foreground truncate">{request.title}</p>
+                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {request.title}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       <span className="font-mono">{request.requestCode}</span>
                       {" · "}
@@ -114,28 +97,23 @@ export default async function DashboardPage() {
                     <PriorityBadge priority={request.priority} />
                     <StatusBadge status={request.status} />
                   </div>
-                </Link>
+                </a>
               ))
             )}
           </div>
-        </div>
+        </AnimatedChartPanel>
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Recent Activity</p>
-            {currentUser.user.isAdmin && (
-              <Link
-                href="/admin/activity"
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                View all <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
-          </div>
-          <div className="p-5">
+        {/* Recent Activity */}
+        <AnimatedChartPanel
+          title="Recent Activity"
+          delay={0.35}
+          viewAllHref={currentUser.user.isAdmin ? "/admin/activity" : undefined}
+          className="p-0"
+        >
+          <div className="-mx-5 -mb-5 px-5 pb-5">
             <ActivityTimeline activities={recentActivities} />
           </div>
-        </div>
+        </AnimatedChartPanel>
       </div>
     </div>
   );

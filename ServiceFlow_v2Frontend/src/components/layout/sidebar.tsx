@@ -14,6 +14,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback } from "@frontend/components/ui/avatar";
 import { Badge } from "@frontend/components/ui/badge";
 import { Button } from "@frontend/components/ui/button";
@@ -33,12 +34,22 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/requests", label: "Requests", icon: ClipboardList },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
-  { href: "/admin/activity", label: "Activity", icon: Activity, adminOnly: true },
+  { href: "/dashboard",      label: "Dashboard", icon: LayoutDashboard },
+  { href: "/requests",       label: "Requests",  icon: ClipboardList },
+  { href: "/reports",        label: "Reports",   icon: BarChart3 },
+  { href: "/admin/users",    label: "Users",     icon: Users,     adminOnly: true },
+  { href: "/admin/activity", label: "Activity",  icon: Activity,  adminOnly: true },
 ];
+
+const navStagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+};
+
+const navItem = {
+  hidden: { opacity: 0, x: -10 },
+  show:   { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+};
 
 interface SidebarProps {
   role?: string;
@@ -59,9 +70,9 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const initials = userName
-    ? userName.split(" ").map((segment) => segment[0]).join("").toUpperCase().slice(0, 2)
+    ? userName.split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2)
     : "U";
-  const isAdmin = role === "admin" || role === "superadmin";
+  const isAdmin   = role === "admin" || role === "superadmin";
   const roleLabel = role === "superadmin" ? "Superadmin" : role === "admin" ? "Admin" : "User";
   const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin);
 
@@ -73,6 +84,7 @@ export function Sidebar({
           collapsed ? "w-[60px]" : "w-64"
         )}
       >
+        {/* Brand header */}
         <div
           className={cn(
             "flex items-center h-16 border-b border-sidebar-border shrink-0 transition-all",
@@ -83,13 +95,28 @@ export function Sidebar({
             href="/dashboard"
             className={cn("flex items-center gap-2.5 min-w-0", collapsed && "justify-center")}
           >
-            <div className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+            <motion.div
+              whileHover={{ scale: 1.08, rotate: 3 }}
+              transition={{ duration: 0.2 }}
+              className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center shrink-0 shadow-md"
+            >
               <Layers className="w-4 h-4 text-white" />
-            </div>
-            {!collapsed && (
-              <span className="font-bold text-base text-sidebar-foreground truncate">ServiceFlow</span>
-            )}
+            </motion.div>
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="font-bold text-base text-sidebar-foreground truncate overflow-hidden whitespace-nowrap"
+                >
+                  ServiceFlow
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Link>
+
           {onClose && !collapsed && (
             <Button
               variant="ghost"
@@ -102,54 +129,81 @@ export function Sidebar({
           )}
         </div>
 
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto scrollbar-thin">
+        {/* Nav */}
+        <motion.nav
+          variants={navStagger}
+          initial="hidden"
+          animate="show"
+          className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto scrollbar-thin"
+        >
           {visibleItems.map((item) => {
             const isActive =
-              item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+              item.href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname.startsWith(item.href);
 
             const linkContent = (
               <Link
-                key={item.href}
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150",
+                  "relative flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 outline-none",
                   collapsed ? "justify-center px-0 py-2.5 w-full" : "px-3 py-2.5",
                   isActive
-                    ? "bg-primary/10 text-primary dark:bg-primary/15"
+                    ? "text-primary"
                     : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
-                {isActive && !collapsed && (
-                  <span className="absolute left-0 w-0.5 h-6 bg-primary rounded-r-full" />
+                {/* Gradient active background */}
+                {isActive && (
+                  <motion.span
+                    layoutId="sidebar-active-bg"
+                    className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/15 to-primary/5"
+                    transition={{ type: "spring", stiffness: 380, damping: 35 }}
+                  />
                 )}
+
+                {/* Left accent bar */}
+                {isActive && !collapsed && (
+                  <motion.span
+                    layoutId="sidebar-active-bar"
+                    className="absolute left-0 w-0.5 h-5 bg-gradient-to-b from-emerald-400 to-teal-500 rounded-r-full"
+                    transition={{ type: "spring", stiffness: 380, damping: 35 }}
+                  />
+                )}
+
                 <item.icon
                   className={cn(
-                    "w-[18px] h-[18px] shrink-0 transition-colors",
+                    "relative z-10 w-[18px] h-[18px] shrink-0 transition-colors",
                     isActive ? "text-primary" : "text-sidebar-foreground/50"
                   )}
                 />
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                {!collapsed && (
+                  <span className="relative z-10 truncate">{item.label}</span>
+                )}
               </Link>
             );
 
             return collapsed ? (
-              <Tooltip key={item.href}>
-                <TooltipTrigger>
-                  <div className="relative">{linkContent}</div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
+              <motion.div key={item.href} variants={navItem}>
+                <Tooltip>
+                  <TooltipTrigger className="w-full">
+                    <div className="relative">{linkContent}</div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              </motion.div>
             ) : (
-              <div key={item.href} className="relative">
+              <motion.div key={item.href} variants={navItem} className="relative">
                 {linkContent}
-              </div>
+              </motion.div>
             );
           })}
-        </nav>
+        </motion.nav>
 
+        {/* Footer — collapse + user */}
         <div className="border-t border-sidebar-border px-2 py-3 space-y-2">
           {onToggleCollapse && (
             <button
@@ -175,8 +229,8 @@ export function Sidebar({
             <Tooltip>
               <TooltipTrigger>
                 <div className="flex justify-center">
-                  <Avatar className="w-8 h-8 cursor-default">
-                    <AvatarFallback className="text-xs bg-primary/15 text-primary font-semibold">
+                  <Avatar className="w-8 h-8 cursor-default ring-2 ring-primary/20">
+                    <AvatarFallback className="text-xs bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-primary font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -188,14 +242,21 @@ export function Sidebar({
               </TooltipContent>
             </Tooltip>
           ) : (
-            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
-              <Avatar className="w-8 h-8 shrink-0">
-                <AvatarFallback className="text-xs bg-primary/15 text-primary font-semibold">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors cursor-default"
+            >
+              <Avatar className="w-8 h-8 shrink-0 ring-2 ring-primary/20">
+                <AvatarFallback className="text-xs bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-primary font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">{userName ?? "User"}</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {userName ?? "User"}
+                </p>
                 <p className="text-xs text-sidebar-foreground/40 truncate">{userEmail ?? ""}</p>
               </div>
               {isAdmin && (
@@ -207,7 +268,7 @@ export function Sidebar({
                   {roleLabel}
                 </Badge>
               )}
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

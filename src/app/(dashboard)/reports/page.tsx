@@ -7,11 +7,11 @@ import {
   getCountByType,
   getDashboardStats,
 } from "@backend/features/reports/queries";
-import { Card, CardContent, CardHeader, CardTitle } from "@frontend/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@frontend/components/ui/tabs";
 import { SimpleBarChart } from "@frontend/features/dashboard/components/bar-chart";
 import { StatusChart } from "@frontend/features/dashboard/components/status-chart";
 import { DateRangeFilter } from "@frontend/features/reports/components/date-range-filter";
+import { ReportsHero } from "@frontend/features/reports/components/reports-hero";
 
 interface SearchParams {
   dateFrom?: string;
@@ -41,7 +41,15 @@ export default async function ReportsPage({
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Reports</h1>
+          <h1 className="text-xl font-bold text-foreground">
+            Reports &amp;{" "}
+            <span
+              style={{ WebkitBackgroundClip: "text", backgroundClip: "text" }}
+              className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent"
+            >
+              Analytics
+            </span>
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Analyze and track service request patterns
           </p>
@@ -49,141 +57,116 @@ export default async function ReportsPage({
         <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Total Requests", value: stats.total, color: "text-blue-600" },
-          { label: "Pending", value: stats.pending, color: "text-yellow-600" },
-          { label: "In Progress", value: stats.inProgress, color: "text-blue-500" },
-          { label: "Resolved", value: stats.resolved, color: "text-green-600" },
-        ].map((item) => (
-          <Card key={item.label}>
-            <CardContent className="p-4 text-center">
-              <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{item.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <ReportsHero stats={stats} />
 
       <Tabs defaultValue="status">
-        <TabsList>
-          <TabsTrigger value="status">By Status</TabsTrigger>
-          <TabsTrigger value="type">By Type</TabsTrigger>
-          <TabsTrigger value="department">By Department</TabsTrigger>
-          <TabsTrigger value="priority">By Priority</TabsTrigger>
+        <TabsList className="bg-muted/60 p-1 rounded-xl gap-0.5">
+          <TabsTrigger value="status" className="rounded-lg text-xs font-medium">By Status</TabsTrigger>
+          <TabsTrigger value="type" className="rounded-lg text-xs font-medium">By Type</TabsTrigger>
+          <TabsTrigger value="department" className="rounded-lg text-xs font-medium">By Department</TabsTrigger>
+          <TabsTrigger value="priority" className="rounded-lg text-xs font-medium">By Priority</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="status" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Status Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatusChart data={byStatus} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Status Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ReportTable data={byStatus} />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="type" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Requests by Type</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SimpleBarChart data={byType} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Type Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ReportTable data={byType} />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="department" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Requests by Department</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SimpleBarChart data={byDept} color="#8b5cf6" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Department Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ReportTable data={byDept} />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="priority" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Requests by Priority</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SimpleBarChart data={byPriority} color="#f59e0b" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Priority Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ReportTable data={byPriority} />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+        {[
+          {
+            value: "status",
+            title: "Status Distribution",
+            tableTitle: "Status Breakdown",
+            chart: <StatusChart data={byStatus} />,
+            data: byStatus,
+            color: undefined,
+          },
+          {
+            value: "type",
+            title: "Requests by Type",
+            tableTitle: "Type Breakdown",
+            chart: <SimpleBarChart data={byType} />,
+            data: byType,
+            color: undefined,
+          },
+          {
+            value: "department",
+            title: "Requests by Department",
+            tableTitle: "Department Breakdown",
+            chart: <SimpleBarChart data={byDept} color="#8b5cf6" />,
+            data: byDept,
+            color: "#8b5cf6",
+          },
+          {
+            value: "priority",
+            title: "Requests by Priority",
+            tableTitle: "Priority Breakdown",
+            chart: <SimpleBarChart data={byPriority} color="#f59e0b" />,
+            data: byPriority,
+            color: "#f59e0b",
+          },
+        ].map((tab) => (
+          <TabsContent key={tab.value} value={tab.value} className="mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-border/60">
+                  <p className="text-sm font-semibold text-foreground">{tab.title}</p>
+                </div>
+                <div className="p-5">{tab.chart}</div>
+              </div>
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-border/60">
+                  <p className="text-sm font-semibold text-foreground">{tab.tableTitle}</p>
+                </div>
+                <div className="p-5">
+                  <ReportTable data={tab.data} accentColor={tab.color} />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
 }
 
-function ReportTable({ data }: { data: { label: string; count: number }[] }) {
+function ReportTable({
+  data,
+  accentColor,
+}: {
+  data: { label: string; count: number }[];
+  accentColor?: string;
+}) {
   const total = data.reduce((sum, row) => sum + row.count, 0);
 
   return (
-    <div className="space-y-2">
-      {data.map((row) => (
-        <div
-          key={row.label}
-          className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0"
-        >
-          <span className="text-foreground">{row.label}</span>
-          <div className="flex items-center gap-3">
-            <span className="text-muted-foreground text-xs">
-              {total > 0 ? ((row.count / total) * 100).toFixed(0) : 0}%
-            </span>
-            <span className="font-semibold text-foreground w-8 text-right">{row.count}</span>
+    <div className="space-y-2.5">
+      {data.map((row) => {
+        const pct = total > 0 ? (row.count / total) * 100 : 0;
+        return (
+          <div key={row.label} className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-foreground font-medium">{row.label}</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
+                <span className="font-semibold text-foreground tabular-nums w-6 text-right">
+                  {row.count}
+                </span>
+              </div>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${pct}%`,
+                  background: accentColor
+                    ? accentColor
+                    : "linear-gradient(to right, var(--color-emerald-500), var(--color-teal-400, #2dd4bf))",
+                }}
+              />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {data.length > 0 && (
-        <div className="flex items-center justify-between text-sm py-1.5 font-semibold">
+        <div className="flex items-center justify-between pt-3 border-t border-border/60 text-sm font-semibold">
           <span className="text-foreground">Total</span>
-          <span className="text-foreground">{total}</span>
+          <span className="text-foreground tabular-nums">{total}</span>
         </div>
       )}
     </div>
