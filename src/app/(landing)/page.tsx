@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { motion, useMotionValueEvent, useScroll } from "framer-motion";
 import {
   Layers,
   ArrowRight,
@@ -14,8 +18,7 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react";
-import { Button } from "@frontend/components/ui/button";
-import { Badge } from "@frontend/components/ui/badge";
+import { RotatingText } from "@frontend/components/animations/rotating-text";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -24,37 +27,31 @@ const FEATURES = [
     icon: ClipboardList,
     title: "Request Tracking",
     desc: "Submit, categorize, and track every internal request from creation to resolution. Nothing falls through the cracks.",
-    color: "text-primary bg-primary/10",
   },
   {
     icon: BarChart3,
     title: "Real-Time Analytics",
     desc: "Live dashboards surface request volume, average resolution time, priority distribution, and department-level trends.",
-    color: "text-blue-500 bg-blue-500/10",
   },
   {
     icon: Shield,
     title: "Role-Based Access",
     desc: "Granular permissions separate what regular users see from what admins control — including user creation and management.",
-    color: "text-violet-500 bg-violet-500/10",
   },
   {
     icon: Activity,
     title: "Full Audit Trail",
     desc: "Every status change, assignment, comment, and update is logged in an immutable activity timeline per request.",
-    color: "text-emerald-500 bg-emerald-500/10",
   },
   {
     icon: MessageSquare,
     title: "Threaded Comments",
     desc: "Keep context in one place. Team members can add, edit, and resolve comments directly on any request.",
-    color: "text-amber-500 bg-amber-500/10",
   },
   {
     icon: Bell,
     title: "Email Notifications",
     desc: "Automatic emails for new requests, status changes, assignments, and comments — keeping everyone in the loop.",
-    color: "text-rose-500 bg-rose-500/10",
   },
 ];
 
@@ -83,119 +80,291 @@ const STATS = [
   { value: "Real-time", label: "dashboard updates" },
 ];
 
+// ─── Dot Canvas ───────────────────────────────────────────────────────────────
+
+/** Full-page interactive dot grid — mouse-reactive #0CF2A0 green dots. */
+function DotCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvasOrNull = canvasRef.current;
+    if (!canvasOrNull) return;
+    const canvas: HTMLCanvasElement = canvasOrNull;
+    const ctxOrNull = canvas.getContext("2d");
+    if (!ctxOrNull) return;
+    const ctx: CanvasRenderingContext2D = ctxOrNull;
+
+    const DOT_SPACING = 25;
+    const BASE_RADIUS = 1;
+    const INTERACTION_RADIUS = 150;
+    const GRID_CELL_SIZE = 50;
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let mouseX = -9999;
+    let mouseY = -9999;
+    let rafId: number;
+
+    interface Dot {
+      x: number;
+      y: number;
+      baseOpacity: number;
+    }
+
+    let dots: Dot[] = [];
+    // Spatial grid: cell key → dot indices
+    let grid: Map<string, number[]> = new Map();
+
+    /** Rebuilds dot array and spatial grid for current viewport size. */
+    function buildDots() {
+      dots = [];
+      grid = new Map();
+      const cols = Math.ceil(width / DOT_SPACING) + 1;
+      const rows = Math.ceil(height / DOT_SPACING) + 1;
+
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const x = c * DOT_SPACING;
+          const y = r * DOT_SPACING;
+          const dot: Dot = { x, y, baseOpacity: 0.40 + Math.random() * 0.10 };
+          const idx = dots.length;
+          dots.push(dot);
+
+          const cx = Math.floor(x / GRID_CELL_SIZE);
+          const cy = Math.floor(y / GRID_CELL_SIZE);
+          const key = `${cx},${cy}`;
+          if (!grid.has(key)) grid.set(key, []);
+          grid.get(key)!.push(idx);
+        }
+      }
+    }
+
+    /** Returns dot indices near (mx, my) using spatial grid. */
+    function getNearbyDots(mx: number, my: number): number[] {
+      const cellRadius = Math.ceil(INTERACTION_RADIUS / GRID_CELL_SIZE) + 1;
+      const cx0 = Math.floor(mx / GRID_CELL_SIZE);
+      const cy0 = Math.floor(my / GRID_CELL_SIZE);
+      const result: number[] = [];
+
+      for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+        for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+          const key = `${cx0 + dx},${cy0 + dy}`;
+          const cell = grid.get(key);
+          if (cell) result.push(...cell);
+        }
+      }
+      return result;
+    }
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+      buildDots();
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, width, height);
+
+      const nearby = getNearbyDots(mouseX, mouseY);
+      const boostedSet = new Set(nearby);
+
+      for (let i = 0; i < dots.length; i++) {
+        const dot = dots[i];
+        let opacity = dot.baseOpacity;
+        let radius = BASE_RADIUS;
+
+        if (boostedSet.has(i)) {
+          const dx = dot.x - mouseX;
+          const dy = dot.y - mouseY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < INTERACTION_RADIUS) {
+            const t = 1 - dist / INTERACTION_RADIUS;
+            opacity = dot.baseOpacity + 0.6 * t;
+            radius = BASE_RADIUS + 1.2 * t;
+          }
+        }
+
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(12, 242, 160, ${opacity})`;
+        ctx.fill();
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    window.addEventListener("mousemove", onMouseMove);
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", onMouseMove);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 z-0 pointer-events-none"
+    />
+  );
+}
+
 // ─── Nav ─────────────────────────────────────────────────────────────────────
 
-// Renders the public landing-page navigation.
+/** Sticky scroll-aware dark header with green CTA. */
 function Nav() {
+  const { scrollY } = useScroll();
+  const [scrolled, setScrolled] = useState(false);
+
+  useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 20));
+
   return (
-    <header className="fixed top-0 inset-x-0 z-50 h-16 bg-background/80 backdrop-blur-md border-b border-border/60">
+    <motion.header
+      animate={{
+        backgroundColor: scrolled ? "rgba(17,17,17,0.95)" : "rgba(17,17,17,0.80)",
+        borderColor: scrolled ? "rgba(75,85,99,0.7)" : "rgba(55,65,81,0.5)",
+        boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.4)" : "none",
+      }}
+      transition={{ duration: 0.3 }}
+      className="fixed top-0 inset-x-0 z-50 h-16 border-b backdrop-blur-md"
+    >
       <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center shadow-sm">
-            <Layers className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg,#0CF2A0,#06d48a)" }}>
+            <Layers className="w-4 h-4 text-[#111111]" />
           </div>
-          <span className="font-bold text-base text-foreground">ServiceFlow</span>
+          <span className="font-bold text-base text-white">ServiceFlow</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a>
-          <a href="#stats" className="hover:text-foreground transition-colors">Stats</a>
+        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-400">
+          <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
+          <a href="#stats" className="hover:text-white transition-colors">Stats</a>
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/login">
-            <Button variant="ghost" size="sm" className="text-sm">
-              Sign in
-            </Button>
+          <Link
+            href="/login"
+            className="text-sm font-medium text-gray-300 hover:text-white transition-colors px-3 py-1.5"
+          >
+            Sign in
           </Link>
-          <Link href="/login">
-            <Button size="sm" className="gap-1.5 text-sm">
-              Get started
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Button>
+          <Link
+            href="/login"
+            className="text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:opacity-90 hover:scale-[1.02]"
+            style={{ background: "#0CF2A0", color: "#111111" }}
+          >
+            Get started
           </Link>
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
-// Renders the landing hero section and primary calls to action.
+/** Hero section with RotatingText headline and staggered entrance. */
 function Hero() {
+  const fadeUp = (delay: number) => ({
+    initial: { opacity: 0, y: 24 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6, ease: "easeOut" as const, delay },
+  });
+
   return (
-    <section className="relative pt-32 pb-24 overflow-hidden">
-      {/* Background mesh */}
-      <div className="absolute inset-0 mesh-bg opacity-40 pointer-events-none" />
-
-      {/* Glow orbs */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-violet-500/8 rounded-full blur-[80px] pointer-events-none" />
-
+    <section className="relative pt-40 pb-28 overflow-hidden">
       <div className="relative max-w-6xl mx-auto px-6 text-center">
-        <Badge
-          variant="secondary"
-          className="mb-6 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20"
+        {/* Badge */}
+        <motion.div {...fadeUp(0.3)}>
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border mb-8"
+            style={{
+              background: "rgba(12,242,160,0.08)",
+              borderColor: "rgba(12,242,160,0.25)",
+              color: "#0CF2A0",
+            }}
+          >
+            <Zap className="w-3 h-3" />
+            Internal operations, simplified
+          </span>
+        </motion.div>
+
+        {/* Headline */}
+        <motion.h1
+          {...fadeUp(0.4)}
+          className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-[1.08] mb-6"
         >
-          <Zap className="w-3 h-3" />
-          Internal operations, simplified
-        </Badge>
+          Track every service{" "}
+          <span style={{ color: "#0CF2A0" }}>
+            <RotatingText
+              texts={["Request", "Workflow", "Operation", "Ticket", "Task"]}
+              rotationInterval={2200}
+              staggerDuration={0.03}
+              staggerFrom="last"
+              mainClassName="inline-flex"
+            />
+          </span>
+        </motion.h1>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-foreground leading-[1.08] mb-6">
-          Service requests,
-          <br />
-          <span className="text-primary">managed with clarity.</span>
-        </h1>
-
-        <p className="max-w-xl mx-auto text-base sm:text-lg text-muted-foreground leading-relaxed mb-10">
+        {/* Subheadline */}
+        <motion.p
+          {...fadeUp(0.5)}
+          className="max-w-xl mx-auto text-base sm:text-lg leading-relaxed mb-10"
+          style={{ color: "rgba(255,255,255,0.55)" }}
+        >
           One platform for your team to submit, track, and resolve every internal
           request — from IT support to document processing — with a full audit
           trail at every step.
-        </p>
+        </motion.p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
-          <Link href="/login">
-            <Button size="lg" className="gap-2 px-7 h-11 text-sm font-semibold shadow-lg shadow-primary/25">
-              Open dashboard
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+        {/* CTAs */}
+        <motion.div
+          {...fadeUp(0.6)}
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8"
+        >
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 px-7 h-11 text-sm font-semibold rounded-lg transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-lg"
+            style={{ background: "#0CF2A0", color: "#111111", boxShadow: "0 0 0 0 rgba(12,242,160,0)" }}
+          >
+            Open dashboard
+            <ArrowRight className="w-4 h-4" />
           </Link>
-          <a href="#features">
-            <Button variant="outline" size="lg" className="gap-2 px-7 h-11 text-sm">
-              See features
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+          <a
+            href="#features"
+            className="inline-flex items-center gap-2 px-7 h-11 text-sm font-medium rounded-lg border transition-all hover:border-[#0CF2A0]/40 hover:text-white"
+            style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.65)" }}
+          >
+            See features
+            <ChevronRight className="w-4 h-4" />
           </a>
-        </div>
+        </motion.div>
 
-        {/* ── 3D Component Slot ───────────────────────────────────────────────
-            Replace this placeholder with a 21st.dev 3D component.
-            Recommended size: max-w-4xl mx-auto, aspect-[16/9] or similar.
-        ─────────────────────────────────────────────────────────────────── */}
-        <div className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden border border-border/60 shadow-2xl shadow-black/30">
-          {/* Simulated app screenshot placeholder */}
-          <div className="bg-sidebar border-b border-border h-10 flex items-center px-4 gap-2">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400/60" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
-              <div className="w-3 h-3 rounded-full bg-green-400/60" />
-            </div>
-            <div className="flex-1 flex justify-center">
-              <div className="w-48 h-5 rounded bg-border/60 text-[10px] flex items-center justify-center text-muted-foreground/60 font-mono">
-                serviceflow.app/dashboard
-              </div>
-            </div>
-          </div>
-          <div className="aspect-[16/8] bg-background flex items-center justify-center">
-            <div className="text-center space-y-2 opacity-40">
-              <BarChart3 className="w-10 h-10 mx-auto text-primary" />
-              <p className="text-sm text-muted-foreground font-medium">App preview</p>
-              <p className="text-xs text-muted-foreground/60">Replace with 21st.dev 3D component</p>
-            </div>
-          </div>
-        </div>
+        {/* Footnote */}
+        <motion.ul
+          {...fadeUp(0.65)}
+          className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs"
+          style={{ color: "rgba(255,255,255,0.35)" }}
+        >
+          {["No public sign-up", "Admin-managed accounts", "Full audit trail included"].map((f) => (
+            <li key={f} className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "rgba(12,242,160,0.6)" }} />
+              {f}
+            </li>
+          ))}
+        </motion.ul>
       </div>
     </section>
   );
@@ -203,19 +372,25 @@ function Hero() {
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
-// Renders portfolio metrics for the landing page.
+/** Stats row — dark background with green accents. */
 function Stats() {
   return (
-    <section id="stats" className="py-16 border-y border-border/60 bg-muted/30">
+    <section id="stats" className="py-16 border-y" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
       <div className="max-w-6xl mx-auto px-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-8"
+        >
           {STATS.map((s) => (
             <div key={s.label} className="text-center">
-              <p className="text-2xl lg:text-3xl font-bold text-foreground mb-1">{s.value}</p>
-              <p className="text-sm text-muted-foreground">{s.label}</p>
+              <p className="text-2xl lg:text-3xl font-bold mb-1" style={{ color: "#0CF2A0" }}>{s.value}</p>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>{s.label}</p>
             </div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -223,42 +398,69 @@ function Stats() {
 
 // ─── Features ─────────────────────────────────────────────────────────────────
 
-// Renders the landing feature grid.
+/** 3×2 feature grid — dark cards with green icon accents. */
 function Features() {
   return (
     <section id="features" className="py-24">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <Badge
-            variant="secondary"
-            className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-primary/10 text-primary border-primary/20"
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border mb-4"
+            style={{
+              background: "rgba(12,242,160,0.08)",
+              borderColor: "rgba(12,242,160,0.25)",
+              color: "#0CF2A0",
+            }}
           >
             <TrendingUp className="w-3 h-3" />
             Everything you need
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 tracking-tight">
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
             Built for internal operations
           </h2>
-          <p className="max-w-lg mx-auto text-muted-foreground text-base leading-relaxed">
+          <p className="max-w-lg mx-auto text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>
             ServiceFlow covers the full lifecycle — from submission to resolution —
             with the visibility and accountability your team needs.
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((f) => {
+          {FEATURES.map((f, i) => {
             const Icon = f.icon;
             return (
-              <div
+              <motion.div
                 key={f.title}
-                className="group p-6 rounded-2xl border border-border/60 bg-card hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200"
+                initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: 0.05 * i }}
+                className="group p-6 rounded-2xl border transition-all duration-200 hover:shadow-lg"
+                style={{
+                  background: "#1a1a1a",
+                  borderColor: "rgba(75,85,99,0.5)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(12,242,160,0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(75,85,99,0.5)";
+                }}
               >
-                <div className={`inline-flex p-2.5 rounded-xl mb-4 ${f.color}`}>
+                <div
+                  className="inline-flex p-2.5 rounded-xl mb-4"
+                  style={{ background: "rgba(12,242,160,0.10)", color: "#0CF2A0" }}
+                >
                   <Icon className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-              </div>
+                <h3 className="text-sm font-semibold text-white mb-2">{f.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>{f.desc}</p>
+              </motion.div>
             );
           })}
         </div>
@@ -269,40 +471,63 @@ function Features() {
 
 // ─── How It Works ─────────────────────────────────────────────────────────────
 
-// Renders the three-step product workflow section.
+/** Three-step workflow — dark background with green numbered circles. */
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 bg-muted/20">
+    <section id="how-it-works" className="py-24" style={{ background: "rgba(255,255,255,0.02)" }}>
       <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <Badge
-            variant="secondary"
-            className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-primary/10 text-primary border-primary/20"
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border mb-4"
+            style={{
+              background: "rgba(12,242,160,0.08)",
+              borderColor: "rgba(12,242,160,0.25)",
+              color: "#0CF2A0",
+            }}
           >
             <Clock className="w-3 h-3" />
             Simple workflow
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 tracking-tight">
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
             From request to resolution
           </h2>
-          <p className="max-w-lg mx-auto text-muted-foreground text-base leading-relaxed">
+          <p className="max-w-lg mx-auto text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>
             Three straightforward steps get every request tracked and resolved —
             with full visibility the entire time.
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid sm:grid-cols-3 gap-8 relative">
-          {/* Connector lines (desktop) */}
-          <div className="hidden sm:block absolute top-10 left-[calc(33%+1rem)] right-[calc(33%+1rem)] h-px bg-border" />
+          {/* Connector lines */}
+          <div className="hidden sm:block absolute top-10 left-[calc(33%+1rem)] right-[calc(33%+1rem)] h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
 
-          {STEPS.map((step) => (
-            <div key={step.n} className="relative text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 mb-5 relative z-10">
-                <span className="text-2xl font-bold text-primary">{step.n}</span>
+          {STEPS.map((step, i) => (
+            <motion.div
+              key={step.n}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45, delay: 0.1 * i }}
+              className="relative text-center"
+            >
+              <div
+                className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-5 relative z-10"
+                style={{
+                  background: "rgba(12,242,160,0.08)",
+                  border: "1px solid rgba(12,242,160,0.20)",
+                }}
+              >
+                <span className="text-2xl font-bold" style={{ color: "#0CF2A0" }}>{step.n}</span>
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-2">{step.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">{step.desc}</p>
-            </div>
+              <h3 className="text-base font-semibold text-white mb-2">{step.title}</h3>
+              <p className="text-sm leading-relaxed max-w-xs mx-auto" style={{ color: "rgba(255,255,255,0.50)" }}>{step.desc}</p>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -312,14 +537,28 @@ function HowItWorks() {
 
 // ─── CTA Banner ───────────────────────────────────────────────────────────────
 
-// Renders the final landing-page call-to-action banner.
+/** Final call-to-action — dark card with green glow. */
 function CTABanner() {
   return (
     <section className="py-24">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="relative overflow-hidden rounded-3xl mesh-bg p-12 text-center">
-          {/* Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55 }}
+          className="relative overflow-hidden rounded-3xl p-12 text-center"
+          style={{
+            background: "#1a1a1a",
+            border: "1px solid rgba(75,85,99,0.5)",
+            boxShadow: "0 0 60px rgba(12,242,160,0.08)",
+          }}
+        >
+          {/* Green glow */}
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 rounded-full blur-3xl pointer-events-none"
+            style={{ background: "rgba(12,242,160,0.12)" }}
+          />
 
           <div className="relative z-10 space-y-6">
             <h2 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
@@ -327,33 +566,32 @@ function CTABanner() {
               <br />
               your internal operations?
             </h2>
-            <p className="text-white/70 text-base max-w-md mx-auto">
+            <p className="text-base max-w-md mx-auto" style={{ color: "rgba(255,255,255,0.55)" }}>
               Sign in to access your dashboard, manage requests, and keep your
               team aligned — from day one.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/login">
-                <Button
-                  size="lg"
-                  className="gap-2 px-8 h-11 bg-white text-primary hover:bg-white/90 font-semibold shadow-lg"
-                >
-                  Sign in to dashboard
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 px-8 h-11 text-sm font-semibold rounded-lg transition-all hover:opacity-90 hover:scale-[1.02]"
+                style={{ background: "#0CF2A0", color: "#111111" }}
+              >
+                Sign in to dashboard
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
-            <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-white/60">
+            <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
               {["No public sign-up", "Admin-managed accounts", "Full audit trail included"].map((f) => (
                 <li key={f} className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-white/80" />
+                  <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "rgba(12,242,160,0.7)" }} />
                   {f}
                 </li>
               ))}
             </ul>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -361,25 +599,25 @@ function CTABanner() {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
-// Renders the public landing footer.
+/** Dark footer with border-gray-800. */
 function Footer() {
   return (
-    <footer className="border-t border-border/60 py-10">
+    <footer className="py-10" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
       <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 gradient-brand rounded-md flex items-center justify-center">
-            <Layers className="w-3.5 h-3.5 text-white" />
+          <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(135deg,#0CF2A0,#06d48a)" }}>
+            <Layers className="w-3.5 h-3.5 text-[#111111]" />
           </div>
-          <span className="text-sm font-semibold text-foreground">ServiceFlow</span>
+          <span className="text-sm font-semibold text-white">ServiceFlow</span>
         </div>
 
-        <nav className="flex items-center gap-5 text-xs text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a>
-          <Link href="/login" className="hover:text-foreground transition-colors">Sign in</Link>
+        <nav className="flex items-center gap-5 text-xs" style={{ color: "rgba(255,255,255,0.40)" }}>
+          <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
+          <Link href="/login" className="hover:text-white transition-colors">Sign in</Link>
         </nav>
 
-        <p className="text-xs text-muted-foreground/60">
+        <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
           © {new Date().getFullYear()} ServiceFlow. All rights reserved.
         </p>
       </div>
@@ -389,18 +627,31 @@ function Footer() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-// Composes the public marketing landing page.
+/** Dark Nexus-inspired landing page — always #111111, #0CF2A0 green accent. */
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "#111111" }}>
+      {/* Interactive dot grid — fixed behind everything */}
+      <DotCanvas />
+
+      {/* Vignette overlay */}
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse at center, transparent 40%, rgba(17,17,17,0.85) 100%)",
+        }}
+      />
+
       <Nav />
-      <main>
+
+      <main className="relative z-10">
         <Hero />
         <Stats />
         <Features />
         <HowItWorks />
         <CTABanner />
       </main>
+
       <Footer />
     </div>
   );

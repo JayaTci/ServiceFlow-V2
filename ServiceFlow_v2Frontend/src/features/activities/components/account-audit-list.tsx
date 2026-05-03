@@ -18,7 +18,7 @@ const ACTION_CONFIG: Record<
   role_changed: {
     label: "changed the role for",
     icon: Shield,
-    color: "bg-blue-500/10 text-blue-500",
+    color: "bg-emerald-500/10 text-emerald-500",
   },
   deactivated: {
     label: "deactivated",

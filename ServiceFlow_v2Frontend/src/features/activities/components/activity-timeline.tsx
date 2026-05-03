@@ -20,7 +20,7 @@ const ACTION_CONFIG: Record<
   { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   created:         { label: "created this request",   icon: Plus,          color: "bg-primary/10 text-primary" },
-  status_changed:  { label: "updated the status",     icon: RefreshCw,     color: "bg-blue-500/10 text-blue-500" },
+  status_changed:  { label: "updated the status",     icon: RefreshCw,     color: "bg-emerald-500/10 text-emerald-500" },
   priority_changed:{ label: "changed the priority",   icon: Zap,           color: "bg-amber-500/10 text-amber-500" },
   assigned:        { label: "assigned this request",  icon: UserCheck,     color: "bg-emerald-500/10 text-emerald-500" },
   unassigned:      { label: "unassigned this request",icon: UserX,         color: "bg-muted text-muted-foreground" },

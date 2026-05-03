@@ -46,7 +46,7 @@ const AppInput = ({ rightSlot, className, ...props }: AppInputProps) => {
           "relative z-10 border border-white/15 h-12 w-full rounded-lg",
           "bg-white/[0.06] px-3 text-sm text-white",
           "outline-none transition-all placeholder:text-white/30",
-          "focus:border-blue-400/60 focus:bg-white/[0.09]",
+          "focus:border-emerald-400/60 focus:bg-white/[0.09]",
           rightSlot && "pr-10",
           className,
         )}
@@ -401,10 +401,10 @@ export default function LoginPage() {
       >
 
         {/* ── Left: characters + branding ─────────────────────────────────── */}
-        <div className="relative hidden lg:flex flex-col justify-between bg-blue-950/50 backdrop-blur-md p-12 text-white overflow-hidden">
+        <div className="relative hidden lg:flex flex-col justify-between bg-emerald-950/50 backdrop-blur-md p-12 text-white overflow-hidden">
           {/* Subtle inner gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-blue-950/40 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/8 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-emerald-950/40 to-transparent pointer-events-none" />
 
           {/* Logo */}
           <motion.div
@@ -616,7 +616,7 @@ export default function LoginPage() {
           <div
             className={cn(
               "absolute pointer-events-none w-[500px] h-[500px] rounded-full blur-3xl transition-opacity duration-300",
-              "bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-violet-500/15",
+              "bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-cyan-500/15",
               isFormHovering ? "opacity-100" : "opacity-0",
             )}
             style={{
@@ -700,7 +700,7 @@ export default function LoginPage() {
                   <Label htmlFor="password" className="text-sm font-medium text-white/70">Password</Label>
                   <Link
                     href="/forgot-password"
-                    className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                    className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
                   >
                     Forgot password?
                   </Link>
@@ -752,9 +752,9 @@ export default function LoginPage() {
                   disabled={isLoading}
                   className={cn(
                     "group/button relative w-full h-12 overflow-hidden rounded-lg",
-                    "bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold",
+                    "bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-semibold",
                     "flex items-center justify-center gap-2",
-                    "transition-all duration-300 hover:scale-[1.01] hover:shadow-lg hover:shadow-blue-500/30",
+                    "transition-all duration-300 hover:scale-[1.01] hover:shadow-lg hover:shadow-emerald-500/30",
                     "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none",
                   )}
                 >

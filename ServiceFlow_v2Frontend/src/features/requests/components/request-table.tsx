@@ -67,7 +67,7 @@ export function RequestTable({ data, currentUserId, isAdmin, onDeleted }: Reques
       cell: (info) => (
         <Link
           href={`/requests/${info.row.original.id}`}
-          className="font-medium text-foreground hover:text-blue-600 line-clamp-1"
+          className="font-medium text-foreground hover:text-primary line-clamp-1"
         >
           {info.getValue()}
         </Link>

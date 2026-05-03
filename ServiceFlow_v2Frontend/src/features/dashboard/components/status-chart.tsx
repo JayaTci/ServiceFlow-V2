@@ -3,7 +3,7 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { CountByField } from "@shared/types";
 
-const COLORS = ["#f59e0b", "#3b82f6", "#22c55e", "#6b7280", "#ef4444"];
+const COLORS = ["#f59e0b", "#10b981", "#22c55e", "#6b7280", "#ef4444"];
 
 interface StatusChartProps {
   data: CountByField[];

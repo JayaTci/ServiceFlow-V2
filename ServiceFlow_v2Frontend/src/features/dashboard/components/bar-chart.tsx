@@ -13,7 +13,7 @@ import {
 import type { CountByField } from "@shared/types";
 
 const COLORS = [
-  "#3b82f6",
+  "#10b981",
   "#8b5cf6",
   "#ec4899",
   "#f59e0b",

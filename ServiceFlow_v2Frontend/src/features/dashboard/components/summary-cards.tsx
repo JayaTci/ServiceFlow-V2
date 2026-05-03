@@ -28,9 +28,9 @@ export function SummaryCards({ stats }: SummaryCardsProps) {
       label: "In Progress",
       value: stats.inProgress,
       icon: Zap,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-      accent: "border-blue-500/20",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      accent: "border-emerald-500/20",
     },
     {
       label: "Resolved",
