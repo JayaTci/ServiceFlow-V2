@@ -106,38 +106,38 @@
 
 /* ── Dark Theme ──────────────────────────────────────────────────────────── */
 .dark {
-  /* Base surfaces — deep near-black with faint green undertone */
-  --background:        oklch(0.09 0.008 155);
+  /* Base surfaces — dark gray with faint green undertone */
+  --background:        oklch(0.18 0.005 155);
   --foreground:        oklch(0.97 0.005 155);
 
   /* Cards — slightly elevated surface */
-  --card:              oklch(0.13 0.01 155);
+  --card:              oklch(0.22 0.007 155);
   --card-foreground:   oklch(0.97 0.005 155);
-  --popover:           oklch(0.13 0.01 155);
+  --popover:           oklch(0.22 0.007 155);
   --popover-foreground: oklch(0.97 0.005 155);
 
   /* Brand — brighter in dark mode for contrast */
   --primary:           oklch(0.78 0.19 155);
-  --primary-foreground: oklch(0.09 0.008 155);
+  --primary-foreground: oklch(0.12 0.008 155);
 
   /* Neutral secondary */
-  --secondary:         oklch(0.19 0.015 155);
-  --secondary-foreground: oklch(0.85 0.01 155);
+  --secondary:         oklch(0.27 0.008 155);
+  --secondary-foreground: oklch(0.88 0.01 155);
 
   /* Muted */
-  --muted:             oklch(0.19 0.01 155);
-  --muted-foreground:  oklch(0.58 0.02 155);
+  --muted:             oklch(0.26 0.006 155);
+  --muted-foreground:  oklch(0.62 0.018 155);
 
   /* Accent */
-  --accent:            oklch(0.22 0.02 155);
-  --accent-foreground: oklch(0.85 0.01 155);
+  --accent:            oklch(0.29 0.01 155);
+  --accent-foreground: oklch(0.88 0.01 155);
 
   /* Destructive */
   --destructive:       oklch(0.70 0.19 22);
 
   /* Borders / inputs — subtle white-on-dark */
-  --border:            oklch(1 0 0 / 9%);
-  --input:             oklch(1 0 0 / 12%);
+  --border:            oklch(1 0 0 / 11%);
+  --input:             oklch(1 0 0 / 14%);
   --ring:              oklch(0.78 0.19 155);
 
   /* Charts */
@@ -147,14 +147,14 @@
   --chart-4:           oklch(0.72 0.10 175);
   --chart-5:           oklch(0.60 0.08 140);
 
-  /* Sidebar — slightly different surface from main bg */
-  --sidebar:                    oklch(0.11 0.01 155);
+  /* Sidebar — slightly deeper than main bg */
+  --sidebar:                    oklch(0.20 0.006 155);
   --sidebar-foreground:         oklch(0.97 0.005 155);
   --sidebar-primary:            oklch(0.78 0.19 155);
-  --sidebar-primary-foreground: oklch(0.09 0.008 155);
-  --sidebar-accent:             oklch(0.19 0.015 155);
-  --sidebar-accent-foreground:  oklch(0.85 0.01 155);
-  --sidebar-border:             oklch(1 0 0 / 8%);
+  --sidebar-primary-foreground: oklch(0.12 0.008 155);
+  --sidebar-accent:             oklch(0.27 0.008 155);
+  --sidebar-accent-foreground:  oklch(0.88 0.01 155);
+  --sidebar-border:             oklch(1 0 0 / 10%);
   --sidebar-ring:               oklch(0.78 0.19 155);
 }
 
@@ -204,10 +204,10 @@
   }
 
   .dark .glass-card {
-    background: oklch(0.13 0.01 155 / 70%);
+    background: oklch(0.22 0.007 155 / 75%);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid oklch(1 0 0 / 8%);
+    border: 1px solid oklch(1 0 0 / 11%);
   }
 
   /* Mesh gradient background for auth/landing */
