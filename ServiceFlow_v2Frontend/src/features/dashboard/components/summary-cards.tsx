@@ -15,7 +15,7 @@ const card = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
   },
 };
 
@@ -121,7 +121,7 @@ export function SummaryCards({ stats }: SummaryCardsProps) {
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
-                    transition={{ duration: 1.1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 1.1, delay: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
                     className={`h-full rounded-full bg-gradient-to-r ${BAR_COLORS[c.label] ?? c.topGrad}`}
                   />
                 </div>

@@ -20,7 +20,7 @@ type FormData = z.infer<typeof schema>;
 
 const cardIn = {
   hidden:  { opacity: 0, y: 32, scale: 0.97 },
-  visible: { opacity: 1, y: 0,  scale: 1, transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0,  scale: 1, transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } },
 } as const;
 
 const item = (delay: number) => ({
@@ -30,7 +30,7 @@ const item = (delay: number) => ({
 
 const successAnim = {
   hidden:  { opacity: 0, scale: 0.85, y: 12 },
-  visible: { opacity: 1, scale: 1,    y: 0,  transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, scale: 1,    y: 0,  transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } },
   exit:    { opacity: 0, scale: 0.95, y: -8, transition: { duration: 0.25 } },
 } as const;
 

@@ -29,7 +29,7 @@ export function AnimatedChartPanel({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
       className={cn("rounded-xl border border-border bg-card overflow-hidden", className)}
     >
       <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
@@ -64,7 +64,7 @@ export function AnimatedPanel({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
       className={cn("rounded-xl border border-border bg-card p-5", className)}
     >
       {children}
