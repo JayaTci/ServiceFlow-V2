@@ -136,13 +136,12 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
   );
 };
 
-// ─── Dev accounts ────────────────────────────────────────────────────────────
+// ─── Public test account ─────────────────────────────────────────────────────
 
-const BOOTSTRAP_ACCOUNTS = [
-  { label: "Superadmin", value: "admin@serviceflow.com / local@dm1n123" },
-  { label: "Admin",      value: "maria@serviceflow.com / admin123" },
-  { label: "User",       value: "john@serviceflow.com / user123" },
-];
+const PUBLIC_TEST_ACCOUNT = {
+  email: "john@serviceflow.com",
+  password: "user123",
+};
 
 // ─── Motion variants ─────────────────────────────────────────────────────────
 
@@ -680,22 +679,21 @@ export default function LoginPage() {
               </motion.div>
             </form>
 
-            {/* Dev accounts */}
-            {process.env.NODE_ENV !== "production" && (
-              <motion.div
-                variants={item(0.55)} initial="hidden" animate="visible"
-                className="mt-6 p-3.5 rounded-xl text-xs space-y-1.5 border border-white/[0.07]"
-                style={{ background: "rgba(255,255,255,0.03)" }}
-              >
-                <p className="font-semibold text-white/40">Local bootstrap accounts</p>
-                {BOOTSTRAP_ACCOUNTS.map((account) => (
-                  <p key={account.label}>
-                    <span className="font-medium text-white/35">{account.label}:</span>{" "}
-                    <span className="text-white/25">{account.value}</span>
-                  </p>
-                ))}
-              </motion.div>
-            )}
+            <motion.div
+              variants={item(0.55)} initial="hidden" animate="visible"
+              className="mt-6 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] p-3.5 text-xs"
+            >
+              <p className="font-semibold text-emerald-200/85">Public test account</p>
+              <p className="mt-1 text-white/45">
+                Use lowest-privilege demo account to view main content before creating your own access.
+              </p>
+              <p className="mt-3 text-white/70">
+                <span className="font-medium text-white/85">Username:</span> {PUBLIC_TEST_ACCOUNT.email}
+              </p>
+              <p className="mt-1 text-white/70">
+                <span className="font-medium text-white/85">Password:</span> {PUBLIC_TEST_ACCOUNT.password}
+              </p>
+            </motion.div>
           </div>
         </div>
 
