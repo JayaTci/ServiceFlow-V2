@@ -685,7 +685,7 @@ export default function LoginPage() {
             >
               <p className="font-semibold text-emerald-200/85">Public test account</p>
               <p className="mt-1 text-white/45">
-                Use lowest-privilege demo account to view main content before creating your own access.
+                use the following credentials to explore the dashboard without signing up.
               </p>
               <p className="mt-3 text-white/70">
                 <span className="font-medium text-white/85">Username:</span> {PUBLIC_TEST_ACCOUNT.email}
