@@ -51,26 +51,26 @@ interface PupilProps {
 
 /** Dark dot that tracks the global mouse cursor. */
 const Pupil = ({ size = 12, maxDistance = 5, pupilColor = "#1a1a1a", forceLookX, forceLookY }: PupilProps) => {
-  const [mouseX, setMouseX] = useState(0);
-  const [mouseY, setMouseY] = useState(0);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
   const pupilRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => { setMouseX(e.clientX); setMouseY(e.clientY); };
+    const onMove = (e: MouseEvent) => {
+      const pupil = pupilRef.current;
+      if (!pupil) return;
+      const r = pupil.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      const dist = Math.min(Math.sqrt(dx ** 2 + dy ** 2), maxDistance);
+      const angle = Math.atan2(dy, dx);
+      setPos({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist });
+    };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+  }, [maxDistance]);
 
-  const pos = (() => {
-    if (forceLookX !== undefined && forceLookY !== undefined) return { x: forceLookX, y: forceLookY };
-    if (!pupilRef.current) return { x: 0, y: 0 };
-    const r = pupilRef.current.getBoundingClientRect();
-    const dx = mouseX - (r.left + r.width / 2);
-    const dy = mouseY - (r.top + r.height / 2);
-    const dist = Math.min(Math.sqrt(dx ** 2 + dy ** 2), maxDistance);
-    const angle = Math.atan2(dy, dx);
-    return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
-  })();
+  const displayPos =
+    forceLookX !== undefined && forceLookY !== undefined ? { x: forceLookX, y: forceLookY } : pos;
 
   return (
     <div
@@ -78,7 +78,7 @@ const Pupil = ({ size = 12, maxDistance = 5, pupilColor = "#1a1a1a", forceLookX,
       className="rounded-full"
       style={{
         width: `${size}px`, height: `${size}px`, backgroundColor: pupilColor,
-        transform: `translate(${pos.x}px, ${pos.y}px)`,
+        transform: `translate(${displayPos.x}px, ${displayPos.y}px)`,
         transition: "transform 0.1s ease-out",
       }}
     />
@@ -95,26 +95,26 @@ interface EyeBallProps {
 
 /** White eyeball with mouse-following pupil and blink support. */
 const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "white", pupilColor = "#1a1a1a", isBlinking = false, forceLookX, forceLookY }: EyeBallProps) => {
-  const [mouseX, setMouseX] = useState(0);
-  const [mouseY, setMouseY] = useState(0);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
   const eyeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => { setMouseX(e.clientX); setMouseY(e.clientY); };
+    const onMove = (e: MouseEvent) => {
+      const eye = eyeRef.current;
+      if (!eye) return;
+      const r = eye.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      const dist = Math.min(Math.sqrt(dx ** 2 + dy ** 2), maxDistance);
+      const angle = Math.atan2(dy, dx);
+      setPos({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist });
+    };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+  }, [maxDistance]);
 
-  const pos = (() => {
-    if (forceLookX !== undefined && forceLookY !== undefined) return { x: forceLookX, y: forceLookY };
-    if (!eyeRef.current) return { x: 0, y: 0 };
-    const r = eyeRef.current.getBoundingClientRect();
-    const dx = mouseX - (r.left + r.width / 2);
-    const dy = mouseY - (r.top + r.height / 2);
-    const dist = Math.min(Math.sqrt(dx ** 2 + dy ** 2), maxDistance);
-    const angle = Math.atan2(dy, dx);
-    return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
-  })();
+  const displayPos =
+    forceLookX !== undefined && forceLookY !== undefined ? { x: forceLookX, y: forceLookY } : pos;
 
   return (
     <div
@@ -127,7 +127,7 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
           className="rounded-full"
           style={{
             width: `${pupilSize}px`, height: `${pupilSize}px`, backgroundColor: pupilColor,
-            transform: `translate(${pos.x}px, ${pos.y}px)`,
+            transform: `translate(${displayPos.x}px, ${displayPos.y}px)`,
             transition: "transform 0.1s ease-out",
           }}
         />
@@ -136,18 +136,20 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
   );
 };
 
-// ─── Public test account ─────────────────────────────────────────────────────
-
-const PUBLIC_TEST_ACCOUNT = {
-  email: "john@serviceflow.com",
-  password: "user123",
-};
-
 // ─── Motion variants ─────────────────────────────────────────────────────────
 
 const cardIn   = { hidden: { opacity: 0, y: 28, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } } } as const;
 const item     = (delay: number) => ({ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45, delay, ease: "easeOut" } } } as const);
 const charIn   = (delay: number) => ({ hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] } } } as const);
+
+type CharacterPosition = { faceX: number; faceY: number; bodySkew: number };
+
+const defaultCharacterPosition: CharacterPosition = { faceX: 0, faceY: 0, bodySkew: 0 };
+
+const GUEST_TEST_ACCOUNT = {
+  email: "john@serviceflow.com",
+  password: "user123",
+};
 
 // ─── Login page ──────────────────────────────────────────────────────────────
 
@@ -160,14 +162,17 @@ export default function LoginPage() {
   const [error, setError]       = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const [mouseX, setMouseX] = useState(0);
-  const [mouseY, setMouseY] = useState(0);
-
   const [isPurpleBlinking, setIsPurpleBlinking] = useState(false);
   const [isBlackBlinking,  setIsBlackBlinking]  = useState(false);
 
   const [isTyping,              setIsTyping]              = useState(false);
-  const [isLookingAtEachOther,  setIsLookingAtEachOther]  = useState(false);
+  const isLookingAtEachOther = isTyping;
+  const [characterPositions, setCharacterPositions] = useState({
+    purple: defaultCharacterPosition,
+    black: defaultCharacterPosition,
+    yellow: defaultCharacterPosition,
+    orange: defaultCharacterPosition,
+  });
 
   const purpleRef = useRef<HTMLDivElement>(null);
   const blackRef  = useRef<HTMLDivElement>(null);
@@ -175,7 +180,30 @@ export default function LoginPage() {
   const orangeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => { setMouseX(e.clientX); setMouseY(e.clientY); };
+    const measure = (
+      ref: React.RefObject<HTMLDivElement | null>,
+      event: MouseEvent
+    ): CharacterPosition => {
+      const element = ref.current;
+      if (!element) return defaultCharacterPosition;
+      const rect = element.getBoundingClientRect();
+      const dx = event.clientX - (rect.left + rect.width / 2);
+      const dy = event.clientY - (rect.top + rect.height / 3);
+      return {
+        faceX: Math.max(-15, Math.min(15, dx / 20)),
+        faceY: Math.max(-10, Math.min(10, dy / 30)),
+        bodySkew: Math.max(-6, Math.min(6, -dx / 120)),
+      };
+    };
+
+    const onMove = (event: MouseEvent) => {
+      setCharacterPositions({
+        purple: measure(purpleRef, event),
+        black: measure(blackRef, event),
+        yellow: measure(yellowRef, event),
+        orange: measure(orangeRef, event),
+      });
+    };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
@@ -204,30 +232,10 @@ export default function LoginPage() {
     return () => clearTimeout(timeout);
   }, []);
 
-  useEffect(() => {
-    if (!isTyping) { setIsLookingAtEachOther(false); return; }
-    setIsLookingAtEachOther(true);
-    const t = setTimeout(() => setIsLookingAtEachOther(false), 800);
-    return () => clearTimeout(t);
-  }, [isTyping]);
-
-  /** Derives body lean and eye offsets from mouse delta relative to a character. */
-  const calcPos = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (!ref.current) return { faceX: 0, faceY: 0, bodySkew: 0 };
-    const rect = ref.current.getBoundingClientRect();
-    const dx = mouseX - (rect.left + rect.width / 2);
-    const dy = mouseY - (rect.top + rect.height / 3);
-    return {
-      faceX:    Math.max(-15, Math.min(15, dx / 20)),
-      faceY:    Math.max(-10, Math.min(10, dy / 30)),
-      bodySkew: Math.max(-6, Math.min(6, -dx / 120)),
-    };
-  };
-
-  const purplePos = calcPos(purpleRef);
-  const blackPos  = calcPos(blackRef);
-  const yellowPos = calcPos(yellowRef);
-  const orangePos = calcPos(orangeRef);
+  const purplePos = characterPositions.purple;
+  const blackPos  = characterPositions.black;
+  const yellowPos = characterPositions.yellow;
+  const orangePos = characterPositions.orange;
 
   const hidingPassword   = isTyping || (password.length > 0 && !showPassword);
   const revealingPassword = password.length > 0 && showPassword;
@@ -680,18 +688,20 @@ export default function LoginPage() {
             </form>
 
             <motion.div
-              variants={item(0.55)} initial="hidden" animate="visible"
+              variants={item(0.55)}
+              initial="hidden"
+              animate="visible"
               className="mt-6 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] p-3.5 text-xs"
             >
-              <p className="font-semibold text-emerald-200/85">Public test account</p>
+              <p className="font-semibold text-emerald-200/85">Guest testing account</p>
               <p className="mt-1 text-white/45">
-                use the following credentials to explore the dashboard without signing up.
+                Public users can use this free account to explore the dashboard.
               </p>
               <p className="mt-3 text-white/70">
-                <span className="font-medium text-white/85">Username:</span> {PUBLIC_TEST_ACCOUNT.email}
+                <span className="font-medium text-white/85">Email:</span> {GUEST_TEST_ACCOUNT.email}
               </p>
               <p className="mt-1 text-white/70">
-                <span className="font-medium text-white/85">Password:</span> {PUBLIC_TEST_ACCOUNT.password}
+                <span className="font-medium text-white/85">Password:</span> {GUEST_TEST_ACCOUNT.password}
               </p>
             </motion.div>
           </div>

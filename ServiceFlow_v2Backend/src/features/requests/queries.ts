@@ -1,15 +1,20 @@
 import { db } from "@database/client";
 import { serviceRequests, users } from "@database/schema";
 import { and, eq, isNull, ilike, or, gte, lte, desc, count, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { RequestFilters } from "@shared/validation/request";
 import type { PaginatedResult, ServiceRequestWithUser } from "@shared/types";
+
+const requester = alias(users, "requester");
+const assignee = alias(users, "assignee");
 
 // Builds request list filters while enforcing non-admin ownership visibility.
 function buildWhereConditions(filters: Partial<RequestFilters>, userId?: string, isAdmin?: boolean) {
   const conditions = [isNull(serviceRequests.deletedAt)];
 
-  if (!isAdmin && userId) {
-    conditions.push(eq(serviceRequests.requestedById, parseInt(userId)));
+  if (!isAdmin) {
+    const parsedUserId = userId ? Number.parseInt(userId, 10) : NaN;
+    conditions.push(eq(serviceRequests.requestedById, Number.isNaN(parsedUserId) ? -1 : parsedUserId));
   }
 
   if (filters.search) {
@@ -81,15 +86,23 @@ export async function getRequests(
         createdAt: serviceRequests.createdAt,
         updatedAt: serviceRequests.updatedAt,
         deletedAt: serviceRequests.deletedAt,
+        assigneeId: serviceRequests.assigneeId,
+        resolvedAt: serviceRequests.resolvedAt,
         requestedBy: {
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          department: users.department,
+          id: requester.id,
+          name: requester.name,
+          email: requester.email,
+          department: requester.department,
+        },
+        assignee: {
+          id: assignee.id,
+          name: assignee.name,
+          email: assignee.email,
         },
       })
       .from(serviceRequests)
-      .innerJoin(users, eq(serviceRequests.requestedById, users.id))
+      .innerJoin(requester, eq(serviceRequests.requestedById, requester.id))
+      .leftJoin(assignee, eq(serviceRequests.assigneeId, assignee.id))
       .where(whereClause)
       .orderBy(desc(serviceRequests.createdAt))
       .limit(pageSize)
@@ -107,7 +120,17 @@ export async function getRequests(
   };
 }
 
-export async function getRequestById(id: number): Promise<ServiceRequestWithUser | null> {
+export async function getRequestById(
+  id: number,
+  userId?: string,
+  isAdmin?: boolean
+): Promise<ServiceRequestWithUser | null> {
+  const conditions = [eq(serviceRequests.id, id), isNull(serviceRequests.deletedAt)];
+  if (!isAdmin) {
+    const parsedUserId = userId ? Number.parseInt(userId, 10) : NaN;
+    conditions.push(eq(serviceRequests.requestedById, Number.isNaN(parsedUserId) ? -1 : parsedUserId));
+  }
+
   const [result] = await db
     .select({
       id: serviceRequests.id,
@@ -123,16 +146,24 @@ export async function getRequestById(id: number): Promise<ServiceRequestWithUser
       createdAt: serviceRequests.createdAt,
       updatedAt: serviceRequests.updatedAt,
       deletedAt: serviceRequests.deletedAt,
+      assigneeId: serviceRequests.assigneeId,
+      resolvedAt: serviceRequests.resolvedAt,
       requestedBy: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        department: users.department,
+        id: requester.id,
+        name: requester.name,
+        email: requester.email,
+        department: requester.department,
+      },
+      assignee: {
+        id: assignee.id,
+        name: assignee.name,
+        email: assignee.email,
       },
     })
     .from(serviceRequests)
-    .innerJoin(users, eq(serviceRequests.requestedById, users.id))
-    .where(and(eq(serviceRequests.id, id), isNull(serviceRequests.deletedAt)))
+    .innerJoin(requester, eq(serviceRequests.requestedById, requester.id))
+    .leftJoin(assignee, eq(serviceRequests.assigneeId, assignee.id))
+    .where(and(...conditions))
     .limit(1);
 
   return (result as ServiceRequestWithUser) ?? null;

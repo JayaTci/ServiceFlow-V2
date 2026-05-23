@@ -66,7 +66,7 @@ export default auth(
     }
 
     if (
-      pathname.startsWith("/admin") &&
+      (pathname.startsWith("/admin") || pathname.startsWith("/reports")) &&
       req.auth?.user?.role !== "admin" &&
       req.auth?.user?.role !== "superadmin"
     ) {

@@ -5,9 +5,11 @@ import { getAuthFailureRedirect, getCurrentUserContext } from "@backend/auth/cur
 import { getActivitiesForRequest } from "@backend/features/activities/queries";
 import { getCommentsForRequest } from "@backend/features/comments/queries";
 import { getRequestById } from "@backend/features/requests/queries";
+import { getAllUsers } from "@backend/features/users/queries";
 import { ActivityTimeline } from "@frontend/features/activities/components/activity-timeline";
 import { CommentForm } from "@frontend/features/comments/components/comment-form";
 import { CommentThread } from "@frontend/features/comments/components/comment-thread";
+import { AssigneeControl } from "@frontend/features/requests/components/assignee-control";
 import { RequestEditForm } from "@frontend/features/requests/components/request-edit-form";
 import { PriorityBadge, StatusBadge } from "@frontend/features/requests/components/status-badge";
 import { buttonVariants } from "@frontend/components/ui/button";
@@ -32,13 +34,18 @@ export default async function RequestDetailPage({
   if (Number.isNaN(requestId)) notFound();
 
   const [request, activities, comments] = await Promise.all([
-    getRequestById(requestId),
-    getActivitiesForRequest(requestId),
-    getCommentsForRequest(requestId),
+    getRequestById(requestId, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+    getActivitiesForRequest(requestId, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+    getCommentsForRequest(requestId, currentUser.user.sessionUserId, currentUser.user.isAdmin),
   ]);
 
   if (!request) notFound();
 
+  const assignableUsers = currentUser.user.isAdmin
+    ? (await getAllUsers())
+        .filter((user) => user.isActive && (user.role === "admin" || user.role === "superadmin"))
+        .map((user) => ({ id: user.id, name: user.name, email: user.email }))
+    : [];
   const isOwner = String(request.requestedById) === currentUser.user.sessionUserId;
   const canEdit = currentUser.user.isAdmin || isOwner;
   const isEditMode = edit === "true" && canEdit;
@@ -129,6 +136,15 @@ export default async function RequestDetailPage({
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <User className="w-3 h-3" />
+                    Assigned to
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {request.assignee?.id ? request.assignee.name : "Unassigned"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarDays className="w-3 h-3" />
                     Date requested
                   </div>
@@ -177,9 +193,20 @@ export default async function RequestDetailPage({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 space-y-4 h-fit">
-          <h2 className="text-sm font-semibold text-foreground">Activity</h2>
-          <ActivityTimeline activities={activities} />
+        <div className="space-y-4">
+          {currentUser.user.isAdmin && (
+            <div className="rounded-xl border border-border bg-card p-6">
+              <AssigneeControl
+                requestId={requestId}
+                assigneeId={request.assigneeId}
+                users={assignableUsers}
+              />
+            </div>
+          )}
+          <div className="rounded-xl border border-border bg-card p-6 space-y-4 h-fit">
+            <h2 className="text-sm font-semibold text-foreground">Activity</h2>
+            <ActivityTimeline activities={activities} />
+          </div>
         </div>
       </div>
     </div>

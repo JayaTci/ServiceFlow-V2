@@ -2,58 +2,25 @@
 
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql, type SQL } from "drizzle-orm";
 import { AuthError } from "next-auth";
 import { z } from "zod";
 import { getAuthFailureMessage, getCurrentUserContext } from "@backend/auth/current-user";
 import { signIn, signOut } from "@backend/auth/config";
 import { sendEmail } from "@backend/email";
 import { passwordResetTemplate } from "@backend/email/templates/password-reset";
+import { checkRateLimit, resetRateLimit } from "@backend/security/rate-limit";
 import { logger } from "@backend/utils/logger";
 import { db } from "@database/client";
 import { users } from "@database/schema";
 import { actionError, actionSuccess, type ActionResult } from "@shared/action-result";
-import { registerSchema, type RegisterInput } from "@shared/validation/auth";
+import { DEPARTMENTS } from "@shared/constants/departments";
+import type { RegisterInput } from "@shared/validation/auth";
 
 /** Registers a non-admin user through the internal account creation flow. */
 export async function registerUser(data: RegisterInput): Promise<ActionResult> {
-  const parsed = registerSchema.safeParse(data);
-  if (!parsed.success) {
-    return actionError(parsed.error.issues[0].message);
-  }
-
-  const name = parsed.data.name.trim();
-  const email = parsed.data.email.trim().toLowerCase();
-  const { password, department } = parsed.data;
-
-  const [existing] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (existing) {
-    return actionError("Email already in use");
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  try {
-    await db.insert(users).values({
-      name,
-      email,
-      passwordHash,
-      role: "user",
-      department: department || null,
-      isActive: true,
-      mustChangePassword: false,
-    });
-  } catch (err) {
-    logger.error("Registration failed", { email, error: String(err) });
-    return actionError("Registration failed. Please try again.");
-  }
-
-  return actionSuccess();
+  void data;
+  return actionError("Public registration is disabled. Ask an admin to create your account.");
 }
 
 /** Signs in a user with credentials through Auth.js. */
@@ -92,6 +59,18 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  const genericMessage =
+    "If an account with that email exists, you'll receive a reset link shortly.";
+
+  const limit = await checkRateLimit({
+    scope: "forgot_password",
+    identifier: normalizedEmail,
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limit.allowed) {
+    return actionSuccess(undefined, genericMessage);
+  }
 
   const [user] = await db
     .select({ id: users.id, name: users.name, email: users.email, isActive: users.isActive })
@@ -128,10 +107,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     }
   }
 
-  return actionSuccess(
-    undefined,
-    "If an account with that email exists, you'll receive a reset link shortly."
-  );
+  return actionSuccess(undefined, genericMessage);
 }
 
 const resetPasswordSchema = z.object({
@@ -145,6 +121,15 @@ export async function resetPassword(token: string, newPassword: string): Promise
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
   const tokenHash = crypto.createHash("sha256").update(parsed.data.token).digest("hex");
+  const limit = await checkRateLimit({
+    scope: "reset_password",
+    identifier: tokenHash,
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limit.allowed) {
+    return actionError("Too many reset attempts. Please request a new link.");
+  }
 
   const [user] = await db
     .select({
@@ -174,6 +159,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
         passwordResetToken: null,
         passwordResetExpiresAt: null,
         mustChangePassword: false,
+        sessionVersion: sql`${users.sessionVersion} + 1`,
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
@@ -182,15 +168,32 @@ export async function resetPassword(token: string, newPassword: string): Promise
     return actionError("Failed to update password. Please try again.");
   }
 
+  await resetRateLimit("reset_password", tokenHash);
   return actionSuccess();
 }
 
-const updateProfileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(80),
-  department: z.string().nullable().optional(),
-  currentPassword: z.string().optional(),
-  newPassword: z.string().min(8, "Password must be at least 8 characters").max(100).optional(),
-});
+const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+    department: z
+      .string()
+      .nullable()
+      .optional()
+      .refine((value) => !value || DEPARTMENTS.includes(value as (typeof DEPARTMENTS)[number]), {
+        message: "Invalid department",
+      }),
+    currentPassword: z.string().optional(),
+    newPassword: z.string().min(8, "Password must be at least 8 characters").max(100).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (Boolean(value.currentPassword) !== Boolean(value.newPassword)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["newPassword"],
+        message: "Current password and new password are both required.",
+      });
+    }
+  });
 
 /** Updates the authenticated user's name, department, and optionally password. */
 export async function updateProfile(data: {
@@ -213,7 +216,16 @@ export async function updateProfile(data: {
 
   if (!user) return actionError("User not found.");
 
-  const updateFields: Partial<typeof users.$inferInsert> = {
+  const updateFields: {
+    name: string;
+    department: string | null;
+    updatedAt: Date;
+    passwordHash?: string;
+    mustChangePassword?: boolean;
+    passwordResetToken?: null;
+    passwordResetExpiresAt?: null;
+    sessionVersion?: SQL;
+  } = {
     name: parsed.data.name.trim(),
     department: parsed.data.department ?? null,
     updatedAt: new Date(),
@@ -227,6 +239,7 @@ export async function updateProfile(data: {
     updateFields.mustChangePassword = false;
     updateFields.passwordResetToken = null;
     updateFields.passwordResetExpiresAt = null;
+    updateFields.sessionVersion = sql`${users.sessionVersion} + 1`;
     passwordChanged = true;
   } else if (currentUser.user.mustChangePassword) {
     return actionError("You must change your password before continuing.");

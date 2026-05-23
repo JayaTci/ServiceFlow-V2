@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { getAuthFailureMessage, getCurrentUserContext } from "@backend/auth/current-user";
+import { isAdminRole } from "@backend/auth/rbac";
 import { logActivity } from "@backend/features/activities/actions";
-import { getRequestCountForYear } from "@backend/features/requests/queries";
 import { canDeleteRequest, canEditRequest } from "@backend/features/requests/permissions";
 import { sendEmail } from "@backend/email";
 import { requestAssignedTemplate } from "@backend/email/templates/request-assigned";
@@ -33,20 +33,32 @@ export async function createRequest(
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
   const year = new Date().getFullYear();
-  const count = await getRequestCountForYear(year);
-  const requestCode = generateRequestCode(year, count + 1);
+  let requestCode = "";
 
   let newRequestId: number;
 
   try {
-    const [inserted] = await db
-      .insert(serviceRequests)
-      .values({
-        ...parsed.data,
-        requestCode,
-        requestedById: currentUser.user.id,
-      })
-      .returning({ id: serviceRequests.id });
+    const inserted = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${year})`);
+
+      const [countResult] = await tx
+        .select({ count: count() })
+        .from(serviceRequests)
+        .where(sql`EXTRACT(YEAR FROM ${serviceRequests.createdAt}) = ${year}`);
+
+      requestCode = generateRequestCode(year, (countResult?.count ?? 0) + 1);
+
+      const [row] = await tx
+        .insert(serviceRequests)
+        .values({
+          ...parsed.data,
+          requestCode,
+          requestedById: currentUser.user.id,
+        })
+        .returning({ id: serviceRequests.id });
+
+      return row;
+    });
 
     newRequestId = inserted.id;
   } catch (err) {
@@ -88,6 +100,8 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
     .select({
       requestedById: serviceRequests.requestedById,
       status: serviceRequests.status,
+      priority: serviceRequests.priority,
+      resolvedAt: serviceRequests.resolvedAt,
       requestCode: serviceRequests.requestCode,
       title: serviceRequests.title,
       requestedByEmail: users.email,
@@ -111,17 +125,20 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
   }
 
   const statusChanged = parsed.data.status !== existing.status;
+  const priorityChanged = parsed.data.priority !== existing.priority;
   const resolvedAt =
     parsed.data.status === "resolved" && existing.status !== "resolved"
       ? new Date()
       : undefined;
+  const nextResolvedAt =
+    parsed.data.status === "resolved" ? resolvedAt ?? existing.resolvedAt : null;
 
   try {
     await db
       .update(serviceRequests)
       .set({
         ...parsed.data,
-        ...(resolvedAt ? { resolvedAt } : {}),
+        resolvedAt: nextResolvedAt,
         updatedAt: new Date(),
       })
       .where(eq(serviceRequests.id, id));
@@ -153,7 +170,20 @@ export async function updateRequest(id: number, data: UpdateRequestInput): Promi
       newStatus: parsed.data.status,
     });
     await sendEmail({ to: existing.requestedByEmail, subject, html });
-  } else {
+  }
+
+  if (priorityChanged) {
+    await logActivity({
+      requestId: id,
+      actorId: currentUser.user.id,
+      action: "priority_changed",
+      fieldChanged: "priority",
+      oldValue: existing.priority,
+      newValue: parsed.data.priority,
+    });
+  }
+
+  if (!statusChanged && !priorityChanged) {
     await logActivity({ requestId: id, actorId: currentUser.user.id, action: "updated" });
   }
 
@@ -174,6 +204,7 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
       requestCode: serviceRequests.requestCode,
       title: serviceRequests.title,
       requestedByName: users.name,
+      assigneeId: serviceRequests.assigneeId,
     })
     .from(serviceRequests)
     .innerJoin(users, eq(serviceRequests.requestedById, users.id))
@@ -181,6 +212,19 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
     .limit(1);
 
   if (!existing) return actionError("Request not found");
+
+  let assignee: { name: string; email: string; role: string; isActive: boolean } | undefined;
+  if (assigneeId !== null) {
+    [assignee] = await db
+      .select({ name: users.name, email: users.email, role: users.role, isActive: users.isActive })
+      .from(users)
+      .where(eq(users.id, assigneeId))
+      .limit(1);
+
+    if (!assignee || !assignee.isActive || !isAdminRole(assignee.role)) {
+      return actionError("Assignee must be an active admin user.");
+    }
+  }
 
   try {
     await db
@@ -201,14 +245,10 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
       requestId: id,
       actorId: currentUser.user.id,
       action: "assigned",
+      fieldChanged: "assigneeId",
+      oldValue: existing.assigneeId === null ? undefined : String(existing.assigneeId),
       newValue: String(assigneeId),
     });
-
-    const [assignee] = await db
-      .select({ name: users.name, email: users.email })
-      .from(users)
-      .where(eq(users.id, assigneeId))
-      .limit(1);
 
     if (assignee) {
       const { subject, html } = requestAssignedTemplate({
@@ -221,7 +261,13 @@ export async function assignRequest(id: number, assigneeId: number | null): Prom
       await sendEmail({ to: assignee.email, subject, html });
     }
   } else {
-    await logActivity({ requestId: id, actorId: currentUser.user.id, action: "unassigned" });
+    await logActivity({
+      requestId: id,
+      actorId: currentUser.user.id,
+      action: "unassigned",
+      fieldChanged: "assigneeId",
+      oldValue: existing.assigneeId === null ? undefined : String(existing.assigneeId),
+    });
   }
 
   revalidatePath("/requests");

@@ -32,7 +32,8 @@ export default async function RequestsPage({
   if (!currentUser.ok) redirect(getAuthFailureRedirect(currentUser.reason));
 
   const params  = await searchParams;
-  const filters = requestFiltersSchema.parse(params);
+  const parsedFilters = requestFiltersSchema.safeParse(params);
+  const filters = parsedFilters.success ? parsedFilters.data : requestFiltersSchema.parse({});
   const result  = await getRequests(
     filters,
     currentUser.user.sessionUserId,

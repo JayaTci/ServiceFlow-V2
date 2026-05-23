@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { canDeleteRequest, canEditRequest } from "@backend/features/requests/permissions";
+import { canDeleteRequest, canEditRequest, canViewRequest } from "@backend/features/requests/permissions";
 import { canAssignRole, canManageRole, isAdminRole } from "@backend/auth/rbac";
 
 describe("request permissions", () => {
+  it("allows admins to view any request", () => {
+    expect(canViewRequest({ role: "admin", requestOwnerId: 10, currentUserId: "3" })).toBe(true);
+  });
+
+  it("blocks non-owner users from viewing others' requests", () => {
+    expect(canViewRequest({ role: "user", requestOwnerId: 10, currentUserId: "11" })).toBe(false);
+  });
+
   it("allows admins to edit any request", () => {
     expect(canEditRequest({ role: "admin", requestOwnerId: 10, currentUserId: "3" })).toBe(true);
   });

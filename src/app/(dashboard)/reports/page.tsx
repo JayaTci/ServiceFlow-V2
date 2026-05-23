@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { getAuthFailureRedirect, getCurrentUserContext } from "@backend/auth/current-user";
 import {
   getCountByDepartment,
@@ -18,6 +19,16 @@ interface SearchParams {
   dateTo?: string;
 }
 
+const optionalDateSchema = z
+  .string()
+  .optional()
+  .refine((value) => !value || !Number.isNaN(Date.parse(value)));
+
+const reportsSearchParamsSchema = z.object({
+  dateFrom: optionalDateSchema,
+  dateTo: optionalDateSchema,
+});
+
 // Renders aggregate request reporting for the selected date range.
 export default async function ReportsPage({
   searchParams,
@@ -26,15 +37,17 @@ export default async function ReportsPage({
 }) {
   const currentUser = await getCurrentUserContext();
   if (!currentUser.ok) redirect(getAuthFailureRedirect(currentUser.reason));
+  if (!currentUser.user.isAdmin) redirect("/dashboard");
 
-  const { dateFrom, dateTo } = await searchParams;
+  const parsedParams = reportsSearchParamsSchema.safeParse(await searchParams);
+  const { dateFrom, dateTo } = parsedParams.success ? parsedParams.data : {};
 
   const [stats, byStatus, byType, byDept, byPriority] = await Promise.all([
-    getDashboardStats(dateFrom, dateTo),
-    getCountByStatus(dateFrom, dateTo),
-    getCountByType(dateFrom, dateTo),
-    getCountByDepartment(dateFrom, dateTo),
-    getCountByPriority(dateFrom, dateTo),
+    getDashboardStats(dateFrom, dateTo, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+    getCountByStatus(dateFrom, dateTo, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+    getCountByType(dateFrom, dateTo, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+    getCountByDepartment(dateFrom, dateTo, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+    getCountByPriority(dateFrom, dateTo, currentUser.user.sessionUserId, currentUser.user.isAdmin),
   ]);
 
   return (

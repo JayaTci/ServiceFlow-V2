@@ -6,6 +6,7 @@ import type { JWT } from "next-auth/jwt";
 import { db } from "@database/client";
 import { users } from "@database/schema";
 import { loginSchema } from "@shared/validation/auth";
+import { checkRateLimit, resetRateLimit } from "@backend/security/rate-limit";
 
 function applyTokenUserFields(
   token: JWT,
@@ -48,12 +49,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = parsed.data.email.trim().toLowerCase();
         const { password } = parsed.data;
 
+        const loginLimit = await checkRateLimit({
+          scope: "login",
+          identifier: email,
+          limit: 10,
+          windowMs: 15 * 60 * 1000,
+        });
+        if (!loginLimit.allowed) return null;
+
         const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
         if (!user || !user.isActive) return null;
 
         const passwordMatch = await bcrypt.compare(password, user.passwordHash);
         if (!passwordMatch) return null;
+
+        await resetRateLimit("login", email);
 
         return {
           id: String(user.id),

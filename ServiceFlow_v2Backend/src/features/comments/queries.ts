@@ -1,5 +1,5 @@
 import { db } from "@database/client";
-import { requestComments, users } from "@database/schema";
+import { requestComments, serviceRequests, users } from "@database/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { CommentWithAuthor } from "@shared/types";
 
@@ -7,7 +7,21 @@ import type { CommentWithAuthor } from "@shared/types";
  * Returns all non-deleted comments for a request, oldest-first
  * so the conversation reads chronologically top-to-bottom.
  */
-export async function getCommentsForRequest(requestId: number): Promise<CommentWithAuthor[]> {
+export async function getCommentsForRequest(
+  requestId: number,
+  userId?: string,
+  isAdmin?: boolean
+): Promise<CommentWithAuthor[]> {
+  const conditions = [
+    eq(requestComments.requestId, requestId),
+    isNull(requestComments.deletedAt),
+    isNull(serviceRequests.deletedAt),
+  ];
+  if (!isAdmin) {
+    const parsedUserId = userId ? Number.parseInt(userId, 10) : NaN;
+    conditions.push(eq(serviceRequests.requestedById, Number.isNaN(parsedUserId) ? -1 : parsedUserId));
+  }
+
   const rows = await db
     .select({
       id: requestComments.id,
@@ -26,7 +40,8 @@ export async function getCommentsForRequest(requestId: number): Promise<CommentW
     })
     .from(requestComments)
     .innerJoin(users, eq(requestComments.authorId, users.id))
-    .where(and(eq(requestComments.requestId, requestId), isNull(requestComments.deletedAt)))
+    .innerJoin(serviceRequests, eq(requestComments.requestId, serviceRequests.id))
+    .where(and(...conditions))
     .orderBy(asc(requestComments.createdAt));
 
   return rows as CommentWithAuthor[];

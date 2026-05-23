@@ -25,13 +25,13 @@ export default async function DashboardPage() {
 
   const [stats, byStatus, byType, byDept, trend, recentRequests, recentActivities] =
     await Promise.all([
-      getDashboardStats(),
-      getCountByStatus(),
-      getCountByType(),
-      getCountByDepartment(),
-      getMonthlyTrend(),
+      getDashboardStats(undefined, undefined, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+      getCountByStatus(undefined, undefined, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+      getCountByType(undefined, undefined, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+      getCountByDepartment(undefined, undefined, currentUser.user.sessionUserId, currentUser.user.isAdmin),
+      getMonthlyTrend(currentUser.user.sessionUserId, currentUser.user.isAdmin),
       getRequests({ pageSize: 5 }, currentUser.user.sessionUserId, currentUser.user.isAdmin),
-      getRecentActivities(8),
+      getRecentActivities(8, currentUser.user.sessionUserId, currentUser.user.isAdmin),
     ]);
 
   return (

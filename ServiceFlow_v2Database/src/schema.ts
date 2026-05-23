@@ -9,6 +9,7 @@ import {
   date,
   pgEnum,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -80,32 +81,44 @@ export const users = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("users_email_idx").on(table.email)]
+  (table) => [
+    uniqueIndex("users_email_idx").on(table.email),
+    index("users_password_reset_token_idx").on(table.passwordResetToken),
+  ]
 );
 
 // ─── Service Requests ──────────────────────────────────────────────────────
 
-export const serviceRequests = pgTable("service_requests", {
-  id: serial("id").primaryKey(),
-  requestCode: varchar("request_code", { length: 20 }).notNull().unique(),
-  title: varchar("title", { length: 200 }).notNull(),
-  description: text("description").notNull(),
-  requestType: requestTypeEnum("request_type").notNull(),
-  department: varchar("department", { length: 100 }).notNull(),
-  requestedById: integer("requested_by_id")
-    .references(() => users.id)
-    .notNull(),
-  // V2: optional assignee (typically an admin user)
-  assigneeId: integer("assignee_id").references(() => users.id),
-  dateRequested: date("date_requested").notNull(),
-  priority: priorityEnum("priority").notNull().default("medium"),
-  status: statusEnum("status").notNull().default("pending"),
-  // Populated when status transitions to "resolved"
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  deletedAt: timestamp("deleted_at"),
-});
+export const serviceRequests = pgTable(
+  "service_requests",
+  {
+    id: serial("id").primaryKey(),
+    requestCode: varchar("request_code", { length: 20 }).notNull().unique(),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description").notNull(),
+    requestType: requestTypeEnum("request_type").notNull(),
+    department: varchar("department", { length: 100 }).notNull(),
+    requestedById: integer("requested_by_id")
+      .references(() => users.id)
+      .notNull(),
+    // V2: optional assignee (typically an admin user)
+    assigneeId: integer("assignee_id").references(() => users.id),
+    dateRequested: date("date_requested").notNull(),
+    priority: priorityEnum("priority").notNull().default("medium"),
+    status: statusEnum("status").notNull().default("pending"),
+    // Populated when status transitions to "resolved"
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => [
+    index("service_requests_requested_by_idx").on(table.requestedById),
+    index("service_requests_assignee_idx").on(table.assigneeId),
+    index("service_requests_deleted_at_idx").on(table.deletedAt),
+    index("service_requests_created_at_idx").on(table.createdAt),
+  ]
+);
 
 // ─── Request Comments ──────────────────────────────────────────────────────
 
@@ -154,6 +167,13 @@ export const accountAuditEvents = pgTable("account_audit_events", {
   oldValue: text("old_value"),
   newValue: text("new_value"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const securityRateLimits = pgTable("security_rate_limits", {
+  key: varchar("key", { length: 128 }).primaryKey(),
+  attempts: integer("attempts").notNull().default(0),
+  windowStart: timestamp("window_start").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // ─── Relations ──────────────────────────────────────────────────────────────
@@ -232,6 +252,8 @@ export type RequestActivity = typeof requestActivities.$inferSelect;
 export type NewRequestActivity = typeof requestActivities.$inferInsert;
 export type AccountAuditEvent = typeof accountAuditEvents.$inferSelect;
 export type NewAccountAuditEvent = typeof accountAuditEvents.$inferInsert;
+export type SecurityRateLimit = typeof securityRateLimits.$inferSelect;
+export type NewSecurityRateLimit = typeof securityRateLimits.$inferInsert;
 export type Role = (typeof roleEnum.enumValues)[number];
 export type RequestType = (typeof requestTypeEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];

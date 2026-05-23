@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getAuthFailureMessage, getCurrentUserContext } from "@backend/auth/current-user";
 import { isAdminRole } from "@backend/auth/rbac";
 import { logActivity } from "@backend/features/activities/actions";
+import { canViewRequest } from "@backend/features/requests/permissions";
 import { logger } from "@backend/utils/logger";
 import { db } from "@database/client";
 import { requestComments, serviceRequests } from "@database/schema";
@@ -24,12 +25,21 @@ export async function createComment(requestId: number, content: string): Promise
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
   const [request] = await db
-    .select({ id: serviceRequests.id })
+    .select({ id: serviceRequests.id, requestedById: serviceRequests.requestedById })
     .from(serviceRequests)
     .where(and(eq(serviceRequests.id, requestId), isNull(serviceRequests.deletedAt)))
     .limit(1);
 
   if (!request) return actionError("Request not found");
+  if (
+    !canViewRequest({
+      role: currentUser.user.role,
+      requestOwnerId: request.requestedById,
+      currentUserId: currentUser.user.sessionUserId,
+    })
+  ) {
+    return actionError("Forbidden");
+  }
 
   try {
     await db.insert(requestComments).values({
@@ -62,9 +72,16 @@ export async function deleteComment(commentId: number): Promise<ActionResult> {
   if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
 
   const [comment] = await db
-    .select({ requestId: requestComments.requestId })
+    .select({ requestId: requestComments.requestId, requestedById: serviceRequests.requestedById })
     .from(requestComments)
-    .where(and(eq(requestComments.id, commentId), isNull(requestComments.deletedAt)))
+    .innerJoin(serviceRequests, eq(requestComments.requestId, serviceRequests.id))
+    .where(
+      and(
+        eq(requestComments.id, commentId),
+        isNull(requestComments.deletedAt),
+        isNull(serviceRequests.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!comment) return actionError("Comment not found");
@@ -97,13 +114,33 @@ export async function updateComment(commentId: number, content: string): Promise
   if (!parsed.success) return actionError(parsed.error.issues[0].message);
 
   const [comment] = await db
-    .select({ authorId: requestComments.authorId, requestId: requestComments.requestId })
+    .select({
+      authorId: requestComments.authorId,
+      requestId: requestComments.requestId,
+      requestedById: serviceRequests.requestedById,
+    })
     .from(requestComments)
-    .where(and(eq(requestComments.id, commentId), isNull(requestComments.deletedAt)))
+    .innerJoin(serviceRequests, eq(requestComments.requestId, serviceRequests.id))
+    .where(
+      and(
+        eq(requestComments.id, commentId),
+        isNull(requestComments.deletedAt),
+        isNull(serviceRequests.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!comment) return actionError("Comment not found");
   if (String(comment.authorId) !== currentUser.user.sessionUserId) return actionError("Forbidden");
+  if (
+    !canViewRequest({
+      role: currentUser.user.role,
+      requestOwnerId: comment.requestedById,
+      currentUserId: currentUser.user.sessionUserId,
+    })
+  ) {
+    return actionError("Forbidden");
+  }
 
   try {
     await db

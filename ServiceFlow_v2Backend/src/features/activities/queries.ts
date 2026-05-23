@@ -1,13 +1,27 @@
 import { db } from "@database/client";
-import { requestActivities, users } from "@database/schema";
-import { eq, desc } from "drizzle-orm";
+import { requestActivities, serviceRequests, users } from "@database/schema";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { ActivityWithActor } from "@shared/types";
 
 /**
  * Fetches the full activity timeline for a service request,
  * ordered newest-first (reversed when rendering for a top-down timeline).
  */
-export async function getActivitiesForRequest(requestId: number): Promise<ActivityWithActor[]> {
+export async function getActivitiesForRequest(
+  requestId: number,
+  userId?: string,
+  isAdmin?: boolean
+): Promise<ActivityWithActor[]> {
+  const conditions = [
+    eq(requestActivities.requestId, requestId),
+    eq(serviceRequests.id, requestActivities.requestId),
+    isNull(serviceRequests.deletedAt),
+  ];
+  if (!isAdmin) {
+    const parsedUserId = userId ? Number.parseInt(userId, 10) : NaN;
+    conditions.push(eq(serviceRequests.requestedById, Number.isNaN(parsedUserId) ? -1 : parsedUserId));
+  }
+
   const rows = await db
     .select({
       id: requestActivities.id,
@@ -26,7 +40,8 @@ export async function getActivitiesForRequest(requestId: number): Promise<Activi
     })
     .from(requestActivities)
     .innerJoin(users, eq(requestActivities.actorId, users.id))
-    .where(eq(requestActivities.requestId, requestId))
+    .innerJoin(serviceRequests, eq(requestActivities.requestId, serviceRequests.id))
+    .where(and(...conditions))
     .orderBy(desc(requestActivities.createdAt));
 
   return rows as ActivityWithActor[];
@@ -35,7 +50,17 @@ export async function getActivitiesForRequest(requestId: number): Promise<Activi
 /**
  * Fetches the most recent N activities across all requests (for the admin dashboard feed).
  */
-export async function getRecentActivities(limit = 10): Promise<ActivityWithActor[]> {
+export async function getRecentActivities(
+  limit = 10,
+  userId?: string,
+  isAdmin?: boolean
+): Promise<ActivityWithActor[]> {
+  const conditions = [isNull(serviceRequests.deletedAt)];
+  if (!isAdmin) {
+    const parsedUserId = userId ? Number.parseInt(userId, 10) : NaN;
+    conditions.push(eq(serviceRequests.requestedById, Number.isNaN(parsedUserId) ? -1 : parsedUserId));
+  }
+
   const rows = await db
     .select({
       id: requestActivities.id,
@@ -54,6 +79,8 @@ export async function getRecentActivities(limit = 10): Promise<ActivityWithActor
     })
     .from(requestActivities)
     .innerJoin(users, eq(requestActivities.actorId, users.id))
+    .innerJoin(serviceRequests, eq(requestActivities.requestId, serviceRequests.id))
+    .where(and(...conditions))
     .orderBy(desc(requestActivities.createdAt))
     .limit(limit);
 

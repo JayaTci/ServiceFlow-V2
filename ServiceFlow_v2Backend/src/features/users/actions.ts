@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { canAssignRole, canManageRole, formatRoleLabel } from "@backend/auth/rbac";
 import {
   getAuthFailureMessage,
@@ -10,10 +11,27 @@ import {
   type CurrentUserContext,
 } from "@backend/auth/current-user";
 import { logAccountAuditEvent } from "@backend/features/activities/account-audit-actions";
+import { checkRateLimit } from "@backend/security/rate-limit";
 import { logger } from "@backend/utils/logger";
 import { db } from "@database/client";
 import { users, type Role } from "@database/schema";
 import { actionError, actionSuccess, type ActionResult } from "@shared/action-result";
+import { DEPARTMENTS } from "@shared/constants/departments";
+
+const departmentSchema = z
+  .string()
+  .optional()
+  .refine((value) => !value || DEPARTMENTS.includes(value as (typeof DEPARTMENTS)[number]), {
+    message: "Invalid department",
+  });
+
+const createUserSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  email: z.string().trim().toLowerCase().email("Invalid email address").max(255),
+  password: z.string().min(8, "Temporary password must be at least 8 characters.").max(100),
+  role: z.enum(["superadmin", "admin", "user"]),
+  department: departmentSchema,
+});
 
 async function getManageableTargetUser(
   userId: number
@@ -78,7 +96,7 @@ export async function updateUserRole(userId: number, role: Role): Promise<Action
   try {
     await db
       .update(users)
-      .set({ role, updatedAt: new Date() })
+      .set({ role, sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: new Date() })
       .where(eq(users.id, userId));
   } catch (err) {
     logger.error("Failed to update user role", { userId, role, error: String(err) });
@@ -119,7 +137,11 @@ export async function setUserActive(userId: number, isActive: boolean): Promise<
   try {
     await db
       .update(users)
-      .set({ isActive, updatedAt: new Date() })
+      .set({
+        isActive,
+        sessionVersion: sql`${users.sessionVersion} + 1`,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, userId));
   } catch (err) {
     logger.error("Failed to update user activity state", { userId, isActive, error: String(err) });
@@ -162,6 +184,20 @@ export async function setUserTemporaryPassword(
     return actionError("Temporary password must be at least 8 characters.");
   }
 
+  if (password.length > 100) {
+    return actionError("Temporary password must be 100 characters or fewer.");
+  }
+
+  const limit = await checkRateLimit({
+    scope: "temporary_password",
+    identifier: `${target.currentUser.id}:${userId}`,
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limit.allowed) {
+    return actionError("Too many password reset attempts. Please try again later.");
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
@@ -172,6 +208,7 @@ export async function setUserTemporaryPassword(
         mustChangePassword: true,
         passwordResetToken: null,
         passwordResetExpiresAt: null,
+        sessionVersion: sql`${users.sessionVersion} + 1`,
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
@@ -204,21 +241,24 @@ export async function adminCreateUser(data: {
   role: Role;
   department?: string;
 }): Promise<ActionResult> {
+  const parsed = createUserSchema.safeParse(data);
+  if (!parsed.success) return actionError(parsed.error.issues[0].message);
+
   const currentUser = await getCurrentUserContext();
   if (!currentUser.ok) return actionError(getAuthFailureMessage(currentUser.reason));
   if (!currentUser.user.isAdmin) return actionError("Forbidden");
-  if (!canAssignRole(currentUser.user.role, data.role)) return actionError("Forbidden");
+  if (!canAssignRole(currentUser.user.role, parsed.data.role)) return actionError("Forbidden");
 
-  const passwordHash = await bcrypt.hash(data.password, 10);
-  const email = data.email.trim().toLowerCase();
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  const email = parsed.data.email;
 
   try {
     await db.insert(users).values({
-      name: data.name.trim(),
+      name: parsed.data.name,
       email,
       passwordHash,
-      role: data.role,
-      department: data.department || null,
+      role: parsed.data.role,
+      department: parsed.data.department || null,
       isActive: true,
       mustChangePassword: true,
     });
@@ -230,7 +270,7 @@ export async function adminCreateUser(data: {
   logger.info("User created via admin panel", {
     actorId: currentUser.user.id,
     email,
-    role: data.role,
+    role: parsed.data.role,
   });
   const [createdUser] = await db
     .select({ id: users.id })
@@ -243,13 +283,13 @@ export async function adminCreateUser(data: {
       actorId: currentUser.user.id,
       targetUserId: createdUser.id,
       action: "user_created",
-      newValue: `${data.role}:${email}`,
+      newValue: `${parsed.data.role}:${email}`,
     });
   }
 
   revalidatePath("/admin/users");
   return actionSuccess(
     undefined,
-    `${formatRoleLabel(data.role)} account created with a temporary password.`
+    `${formatRoleLabel(parsed.data.role)} account created with a temporary password.`
   );
 }

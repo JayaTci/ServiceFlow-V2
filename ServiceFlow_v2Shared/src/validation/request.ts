@@ -1,8 +1,27 @@
 import { z } from "zod";
+import { DEPARTMENTS } from "@shared/constants/departments";
+
+const departmentSchema = z
+  .string()
+  .min(1, "Department is required")
+  .refine((value) => DEPARTMENTS.includes(value as (typeof DEPARTMENTS)[number]), {
+    message: "Invalid department",
+  });
+
+const optionalDateSchema = z
+  .string()
+  .optional()
+  .refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+    message: "Invalid date format",
+  });
 
 export const createRequestSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters").max(200),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  title: z.string().trim().min(3, "Title must be at least 3 characters").max(200),
+  description: z
+    .string()
+    .trim()
+    .min(10, "Description must be at least 10 characters")
+    .max(2000, "Description must be 2000 characters or fewer"),
   requestType: z.enum([
     "it_support",
     "maintenance",
@@ -10,7 +29,7 @@ export const createRequestSchema = z.object({
     "document_processing",
     "general",
   ]),
-  department: z.string().min(1, "Department is required"),
+  department: departmentSchema,
   dateRequested: z
     .string()
     .min(1, "Date is required")
@@ -23,7 +42,7 @@ export const updateRequestSchema = createRequestSchema.extend({
 });
 
 export const requestFiltersSchema = z.object({
-  search: z.string().optional(),
+  search: z.string().trim().max(100).optional(),
   status: z
     .enum(["pending", "in_progress", "resolved", "closed", "cancelled", "all"])
     .optional(),
@@ -37,10 +56,10 @@ export const requestFiltersSchema = z.object({
       "all",
     ])
     .optional(),
-  department: z.string().optional(),
+  department: z.union([departmentSchema, z.literal("all")]).optional(),
   priority: z.enum(["low", "medium", "high", "urgent", "all"]).optional(),
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
+  dateFrom: optionalDateSchema,
+  dateTo: optionalDateSchema,
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(10),
 });
